@@ -13,18 +13,34 @@ exports.handler = (event, context, callback) => {
 	// GET request is Facebook performing verification
 	if (event.httpMethod == 'GET') {
 		const queryParams = event.queryStringParameters;
-		if (queryParams['hub.verify_token'] == process.env.VERIFY_TOKEN) {
+		if (!queryParams || !queryParams['hub.verify_token']) {
 			callback(null, {
-				'body': queryParams['hub.challenge'],
-				'statusCode': 200
+				'body': 'Missing validation token',
+				'statusCode': 400
 			});
-		} else {
-			callback(null, {
-				'body': 'Wrong validation token',
-				'statusCode': 403
-			});
+			return;
 		}
 
+		if (!queryParams['hub.challenge']) {
+			callback(null, {
+				'body': 'Missing challenge',
+				'statusCode': 400
+			});
+			return;
+		}
+
+		if (queryParams['hub.verify_token'] != process.env.VERIFY_TOKEN) {
+			callback(null, {
+				'body': 'Wrong validation token',
+				'statusCode': 401
+			});
+			return;
+		}
+
+		callback(null, {
+			'body': queryParams['hub.challenge'],
+			'statusCode': 200
+		});
 	// POST request represents new messages
 	} else if (event.httpMethod == 'POST') {
 		const data = JSON.parse(event.body);
