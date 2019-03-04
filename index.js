@@ -189,6 +189,8 @@ function handleCreate(msg, user) {
 	})
 	.then(returnValues => {
 		returnValues.forEach(data => {
+			if (!data || !data.Attributes || !data.Attributes.gameID) return;
+
 			user.sendMessage(`Cancelled previous game ${data.Attributes.gameID}`);
 
 			data.Attributes.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
