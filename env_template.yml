@@ -1,0 +1,14 @@
+# Add the appropriate parameters, then rename this to env.yml
+# Environment variables accessed by serverless.yml
+
+default:
+  # AWS region you want to deploy to
+  REGION: eu-west-2
+  # Lambda role ARN (should have logging and dynamoDB access)
+  LAMBDA_ROLE_ARN: arn:aws:iam::000000000000:role/service-role/roleName
+  # Page access token from Facebook
+  PAGE_ACCESS_TOKEN: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  # Verify token which your function will test against GET requests.
+  # Needed when adding webhook in the Facebook developer console.
+  # Can basically be any string.
+  VERIFY_TOKEN: AAAAAAAAAAAAAAAA
