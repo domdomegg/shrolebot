@@ -172,6 +172,11 @@ function handleCreate(msg, user) {
 	dynamoDB.scan(scanParams).promise()
 	.then(data => {
 		return Promise.all(data.Items.map(item => {
+			if (item.gameID == 9999) {
+				user.sendMessage(`Not cancelling test game ${item.gameID}`);
+				return;
+			}
+
 			// Delete previous games
 			let deleteParams = {
 				Key: {
@@ -184,7 +189,7 @@ function handleCreate(msg, user) {
 	})
 	.then(returnValues => {
 		returnValues.forEach(data => {
-			user.sendMessage(`Cancelling previous game ${data.Attributes.gameID}`);
+			user.sendMessage(`Cancelled previous game ${data.Attributes.gameID}`);
 
 			data.Attributes.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
 				if (player.equals(user)) return;
@@ -220,7 +225,7 @@ function handleCreate(msg, user) {
 }
 
 function generateGameID() {
-	return Math.floor(Math.random() * (9999 - 1000 + 1) + 1000);
+	return Math.floor(Math.random() * (9998 - 1000 + 1) + 1000);
 }
 
 function handleJoin(msg, user) {
