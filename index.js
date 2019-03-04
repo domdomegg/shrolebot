@@ -115,7 +115,7 @@ function handleDatabase(msg, user) {
 		user.sendMessage(JSON.stringify(data.Item, null, '\t'));
 	})
 	.catch(err => {
-		console.log(err);
+		console.error(err);
 		user.sendMessage(`Unknown error retrieving database`);
 	});
 }
@@ -158,7 +158,7 @@ function handleCreate(msg, user) {
 		});
 	})
 	.catch(err => {
-		console.log(err);
+		console.error(err);
 		user.sendMessage(`Failed to cancel old games, but continuing anyways.`);
 	})
 	.then(() => {
@@ -179,7 +179,7 @@ function handleCreate(msg, user) {
 		user.sendMessage(`Created game ${gameID}`);
 	})
 	.catch(err => {
-		console.log(err);
+		console.error(err);
 		user.sendMessage(`Error creating game, please try again.`);
 	});
 }
@@ -207,11 +207,11 @@ function handleJoin(msg, user) {
 			if (err.code == 'ConditionalCheckFailedException') {
 				user.sendMessage(`Game ${gameID} not found - check the number is correct`);
 			} else {
-				console.log(err);
+				console.error(err);
 				user.sendMessage(`An unknown error occured (1) - please tell Adam if you see this!`);
 			}
 		} else if (!data.Attributes) {
-			console.log(err);
+			console.error(err);
 			user.sendMessage(`An unknown error occured (2) - please tell Adam if you see this!`);
 		} else {
 			let owner = new User(data.Attributes.owner)
@@ -305,7 +305,7 @@ function handleStart(msg, user) {
 		});
 	})
 	.catch(err => {
-		console.log(err);
+		console.error(err);
 		user.sendMessage(`An unknown error occured (3) - please tell Adam if you see this!`);
 	});
 }
@@ -369,7 +369,7 @@ function handlePlayers(msg, user) {
 		});
 	})
 	.catch(err => {
-		console.log(err);
+		console.error(err);
 		user.sendMessage(`Unknown error retrieving database`);
 	});
 }
