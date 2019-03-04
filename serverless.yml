@@ -1,0 +1,50 @@
+service: secret-hitler-role-bot
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: ${opt:stage, 'prod'}
+  apiName: ${self:service}-api
+  tableName: ${self:service}-${self:provider.stage}-games
+  env: ${file(env.yml):${self:provider.stage}, file(env.yml):default}
+  region: ${self:provider.env.REGION}
+  role: ${self:provider.env.LAMBDA_ROLE_ARN}
+
+functions:
+  fb:
+    description: A Lambda function to handle Facebook Messenger requests for the Secret Hitler Role Bot. Managed by Serverless.
+    handler: index.handler
+    environment:
+      PAGE_ACCESS_TOKEN: ${self:provider.env.PAGE_ACCESS_TOKEN}
+      TABLE_NAME: ${self:provider.tableName}
+      VERIFY_TOKEN: ${self:provider.env.VERIFY_TOKEN}
+    package:
+      include:
+        - index.js
+        - node_modules/**
+    events:
+      - http:
+          method: ANY
+          path: /
+
+resources:
+  Resources:
+    GamesTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Delete
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: gameID
+            AttributeType: 'N' # Number
+        KeySchema:
+          -
+            AttributeName: gameID
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.tableName}
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true

@@ -54,8 +54,12 @@ typings/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
+# environment variables file
 .env
+env.yml
 
 # next.js build output
 .next
+
+# Serverless directories
+.serverless
