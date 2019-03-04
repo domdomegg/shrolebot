@@ -21,6 +21,7 @@ functions:
     package:
       include:
         - index.js
+        - FacebookUser.js
         - node_modules/**
     events:
       - http:
