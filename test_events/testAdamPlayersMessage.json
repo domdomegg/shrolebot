@@ -1,0 +1,4 @@
+{
+	"body": "{\"object\":\"page\",\"entry\":[{\"id\":\"0\",\"time\":1458692752478,\"messaging\":[{\"sender\":{\"id\":\"2042234462562041\"},\"recipient\":{\"id\":\"0\"},\"timestamp\":1458692752478,\"message\":{\"mid\":\"mid.1457764197618:41d102a3e1ae206a38\",\"text\":\"players 9999\"}}]}]}",
+	"httpMethod": "POST"
+}
