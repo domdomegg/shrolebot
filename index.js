@@ -8,6 +8,48 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient({
 	}
 });
 
+// User class
+class User {
+	constructor(facebook_psid) {
+		this.facebook_psid = facebook_psid;
+		this.first_name = null;
+	}
+
+	async getFirstNamePromise() {
+		if (this.first_name == null) {
+			const data = await request({
+				"uri": `https://graph.facebook.com/${this.facebook_psid}?fields=first_name&access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+				"method": "GET",
+				json: true
+			});
+			this.first_name = data.first_name
+		}
+		return this.first_name;
+	}
+
+	// Sends response messages via the Send API
+	sendMessage(msg) {
+		let request_body = {
+			recipient: { id: this.facebook_psid },
+			message: { text: msg }
+		};
+
+		// Send the HTTP request to the Messenger Platform
+		request({
+			"uri": "https://graph.facebook.com/v2.6/me/messages",
+			"qs": { "access_token": process.env.PAGE_ACCESS_TOKEN },
+			"method": "POST",
+			"json": request_body
+		})
+		.then(() => { console.log("Message sent" + (msg ? ": " + msg : "")); })
+		.catch(err => { console.error("Unable to send message:" + err); });
+	}
+
+	equals(user) {
+		return this.facebook_psid == user.facebook_psid;
+	}
+}
+
 exports.handler = (event, context, callback) => {
 
 	// GET request is Facebook performing verification
@@ -78,25 +120,26 @@ exports.handler = (event, context, callback) => {
 }
 
 // Handles messages events
-function handleMessage(sender_psid, received_message) {
+function handleMessage(facebook_psid, received_message) {
 	if (!received_message.text) {
-		handleUnrecognized(null, sender_psid);
+		handleUnrecognized(null, facebook_psid);
 	} else {
 		let msg = received_message.text.toLowerCase();
-		console.log("Recieved message '" + msg + "' from user with PSID " + sender_psid);
+		let user = new User(facebook_psid);
+		console.log("Recieved message '" + msg + "' from user with PSID " + user.facebook_psid);
 
-		if (msg.startsWith('database')) handleDatabase(msg, sender_psid);
-		else if (msg.startsWith('create')) handleCreate(msg, sender_psid);
-		else if (msg.startsWith('join')) handleJoin(msg, sender_psid);
+		if (msg.startsWith('database')) handleDatabase(msg, user);
+		else if (msg.startsWith('create')) handleCreate(msg, user);
+		else if (msg.startsWith('join')) handleJoin(msg, user);
 		// TODO: else if (msg.startsWith('leave'))
-		else if (msg.startsWith('start')) handleStart(msg, sender_psid);
-		else if (msg.startsWith('players')) handlePlayers(msg, sender_psid);
-		else if (msg.startsWith('help')) handleHelp(msg, sender_psid);
-		else handleUnrecognized(msg, sender_psid);
+		else if (msg.startsWith('start')) handleStart(msg, user);
+		else if (msg.startsWith('players')) handlePlayers(msg, user);
+		else if (msg.startsWith('help')) handleHelp(msg, user);
+		else handleUnrecognized(msg, user);
 	}
 }
 
-function handleDatabase(msg, sender_psid) {
+function handleDatabase(msg, user) {
 	let gameID = parseInt(msg.slice(9, 13));
 	let params = {
 		Key: {
@@ -107,24 +150,24 @@ function handleDatabase(msg, sender_psid) {
 	dynamoDB.get(params).promise()
 	.then(data => {
 		if (!data.Item) {
-			sendMessage(sender_psid, `Game ${gameID} not found - check the number is correct`);
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
 			return;
 		}
 
-		sendMessage(sender_psid, JSON.stringify(data.Item, null, '\t'));
+		user.sendMessage(JSON.stringify(data.Item, null, '\t'));
 	})
 	.catch(err => {
 		console.log(err);
-		sendMessage(sender_psid, `Unknown error retrieving database`);
+		user.sendMessage(`Unknown error retrieving database`);
 	});
 }
 
-function handleCreate(msg, sender_psid) {
+function handleCreate(msg, user) {
 	// Find previous games
 	let scanParams = {
 		FilterExpression: '#o = :o',
 		ExpressionAttributeNames: { '#o': 'owner' },
-		ExpressionAttributeValues: { ':o': sender_psid }
+		ExpressionAttributeValues: { ':o': user.facebook_psid }
 	};
 	dynamoDB.scan(scanParams).promise()
 	.then(data => {
@@ -141,25 +184,25 @@ function handleCreate(msg, sender_psid) {
 	})
 	.then(returnValues => {
 		returnValues.forEach(data => {
-			sendMessage(sender_psid, `Cancelling previous game ${data.Attributes.gameID}`);
+			user.sendMessage(`Cancelling previous game ${data.Attributes.gameID}`);
 
-			data.Attributes.players.values.forEach(player => {
-				if (player == sender_psid) return;
-				sendMessage(player, `The host cancelled game ${data.Attributes.gameID}`);
+			data.Attributes.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
+				if (player.equals(user)) return;
+				player.sendMessage(`The host cancelled game ${data.Attributes.gameID}`);
 			});
 		});
 	})
 	.catch(err => {
 		console.log(err);
-		sendMessage(sender_psid, `Failed to cancel old games, but continuing anyways.`);
+		user.sendMessage(`Failed to cancel old games, but continuing anyways.`);
 	})
 	.then(() => {
 		let gameID = generateGameID();
 		let putParams = {
 			Item: {
 				'gameID': gameID,
-				'owner': sender_psid,
-				'players': dynamoDB.createSet([sender_psid]),
+				'owner': user.facebook_psid,
+				'players': dynamoDB.createSet([user.facebook_psid]),
 				'ttl': Math.floor(Date.now() / 1000) + 86400 // 24 hour TTL
 			},
 			ConditionExpression: 'attribute_not_exists(gameID)'
@@ -168,11 +211,11 @@ function handleCreate(msg, sender_psid) {
 		return dynamoDB.put(putParams).promise().then(() => gameID);
 	})
 	.then(gameID => {
-		sendMessage(sender_psid, `Created game ${gameID}`);
+		user.sendMessage(`Created game ${gameID}`);
 	})
 	.catch(err => {
 		console.log(err);
-		sendMessage(sender_psid, `Error creating game, please try again.`);
+		user.sendMessage(`Error creating game, please try again.`);
 	});
 }
 
@@ -180,7 +223,7 @@ function generateGameID() {
 	return Math.floor(Math.random() * (9999 - 1000 + 1) + 1000);
 }
 
-function handleJoin(msg, sender_psid) {
+function handleJoin(msg, user) {
 	let gameID = parseInt(msg.slice(5, 9));
 	let params = {
 		Key: {
@@ -188,7 +231,7 @@ function handleJoin(msg, sender_psid) {
 		},
 		UpdateExpression: 'ADD players :player',
 		ExpressionAttributeValues: {
-			":player": dynamoDB.createSet([sender_psid])
+			":player": dynamoDB.createSet([user.facebook_psid])
 		},
 		ConditionExpression: 'attribute_exists(gameID)',
 		ReturnValues: "ALL_NEW",
@@ -197,34 +240,26 @@ function handleJoin(msg, sender_psid) {
 	dynamoDB.update(params, function (err, data) {
 		if (err) {
 			if (err.code == 'ConditionalCheckFailedException') {
-				sendMessage(sender_psid, `Game ${gameID} not found - check the number is correct`);
+				user.sendMessage(`Game ${gameID} not found - check the number is correct`);
 			} else {
 				console.log(err);
-				sendMessage(sender_psid, `An unknown error occured (1) - please tell Adam if you see this!`);
+				user.sendMessage(`An unknown error occured (1) - please tell Adam if you see this!`);
 			}
 		} else if (!data.Attributes) {
 			console.log(err);
-			sendMessage(sender_psid, `An unknown error occured (2) - please tell Adam if you see this!`);
+			user.sendMessage(`An unknown error occured (2) - please tell Adam if you see this!`);
 		} else {
-			Promise.all([
-				getFirstName(sender_psid),
-				getFirstName(data.Attributes.owner)
-			])
-			.then(res => {
-				let [joinerName, ownerName] = res;
-				sendMessage(sender_psid, `Joined ${ownerName}'s game ${data.Attributes.gameID}`);
-				sendMessage(data.Attributes.owner, `${joinerName} joined game ${data.Attributes.gameID}`);
+			let owner = new User(data.Attributes.owner)
+
+			Promise.all([user.getFirstNamePromise(), owner.getFirstNamePromise()]).then(_ => {
+				user.sendMessage(`Joined ${owner.first_name}'s game ${data.Attributes.gameID}`);
+				owner.sendMessage(`${user.first_name} joined game ${data.Attributes.gameID}`);
 			})
-			.catch(err => {
-				console.log("Failed to get names from Facebook graph API: " + err);
-				sendMessage(sender_psid, `Joined game ${data.Attributes.gameID}`);
-				sendMessage(data.Attributes.owner, `A user joined game ${data.Attributes.gameID}`);
-			});
 		}
 	});
 }
 
-function handleStart(msg, sender_psid) {
+function handleStart(msg, user) {
 	let gameID = parseInt(msg.slice(6, 10));
 	let params = {
 		Key: {
@@ -235,28 +270,28 @@ function handleStart(msg, sender_psid) {
 	dynamoDB.get(params).promise()
 	.then(data => {
 		if (!data.Item) {
-			sendMessage(sender_psid, `Game ${gameID} not found - check the number is correct`);
-			sendMessage(sender_psid, `Games time out after 24 hours, so you might need to create a new one`);
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
+			user.sendMessage(`Games time out after 24 hours, so you might need to create a new one`);
 			return;
 		}
 
-		if (data.Item.owner != sender_psid) {
-			sendMessage(sender_psid, `Only the person who created the game can start it.`);
+		if (data.Item.owner != user.facebook_psid) {
+			user.sendMessage(`Only the person who created the game can start it.`);
 			return;
 		}
 
-		let players = data.Item.players.values;
+		let players = data.Item.players.values.map(facebook_psid => new User(facebook_psid));
 
 		if (players.length < 5) {
-			sendMessage(sender_psid, `At least 5 players are needed to start a game - currently there ${players.length == 1 ? 'is' : 'are'} only ${players.length}`);
+			user.sendMessage(`At least 5 players are needed to start a game - currently there ${players.length == 1 ? 'is' : 'are'} only ${players.length}`);
 			return;
 		}
 		if (players.length > 10) {
-			sendMessage(sender_psid, `A maximum of 10 people can play a game - currently there are ${players.length}`);
+			user.sendMessage(`A maximum of 10 people can play a game - currently there are ${players.length}`);
 			return;
 		}
 
-		sendMessage(sender_psid, `Game starting with ${players.length} players`);
+		user.sendMessage(`Game starting with ${players.length} players`);
 
 		// Update the TTL
 		let TTLparams = {
@@ -272,46 +307,41 @@ function handleStart(msg, sender_psid) {
 		};
 		dynamoDB.update(TTLparams, (err, data) => { });
 
-		// Get people's roles (list of psid's)
+		// Get people's roles
 		let [hitler, fascists, liberals] = calcPlayerRoles(players);
 
-		Promise.all(players.map(getFirstName))
-		.then(ns => {
-			let names = {};
-			ns.forEach((n, i) => names[players[i]] = n)
-			return names;
-		})
-		.then(names => {
+		// Get people's names
+		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
 			if (fascists.length == 1) {
-				sendMessage(hitler, `You are Hitler! The other fascist is ${names[fascists[0]]}`);
-				sendMessage(fascists[0], `You are fascist! Hitler is ${names[hitler]}`);
+				hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].first_name}`);
+				fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.first_name}`);
 			} else {
-				sendMessage(hitler, `You are Hitler!`);
+				hitler.sendMessage(`You are Hitler!`);
 
 				fascists.forEach(fascistPlayer => {
 					let otherFascists = fascists.filter(f => f != fascistPlayer);
 					if (otherFascists.length == 1) {
-						sendMessage(fascistPlayer, `You are fascist! Hitler is ${names[hitler]} and the other fascist is ${names[otherFascists[0]]}.`);
+						fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.first_name} and the other fascist is ${otherFascists[0].first_name}.`);
 					} else {
-						sendMessage(fascistPlayer, `You are fascist! Hitler is ${names[hitler]} and the other fascist are ${otherFascists.map(f => names[f]).join(' and ')}.`);
+						fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.first_name} and the other fascists are ${otherFascists.map(f => f.first_name).join(' and ')}.`);
 					}
 				});
 			}
 
-			sendMessage(hitler, `You can show your group membership at https://goo.gl/dvwKVp`);
+			hitler.sendMessage(`You can show your group membership at https://goo.gl/dvwKVp`);
 			fascists.forEach(player => {
-				sendMessage(player, `You can show your group membership at https://goo.gl/dvwKVp`);
+				player.sendMessage(`You can show your group membership at https://goo.gl/dvwKVp`);
 			});
 
 			liberals.forEach(player => {
-				sendMessage(player, `You are liberal!`);
-				sendMessage(player, `You can show your group membership at https://goo.gl/x1hekt`);
+				player.sendMessage(`You are liberal!`);
+				player.sendMessage(`You can show your group membership at https://goo.gl/x1hekt`);
 			});
 		});
 	})
 	.catch(err => {
 		console.log(err);
-		sendMessage(sender_psid, `An unknown error occured (3) - please tell Adam if you see this!`);
+		user.sendMessage(`An unknown error occured (3) - please tell Adam if you see this!`);
 	});
 }
 
@@ -343,7 +373,7 @@ function shuffle(arr) {
 	}
 }
 
-function handlePlayers(msg, sender_psid) {
+function handlePlayers(msg, user) {
 	let gameID = parseInt(msg.slice(8, 12));
 	let params = {
 		Key: {
@@ -354,79 +384,40 @@ function handlePlayers(msg, sender_psid) {
 	dynamoDB.get(params).promise()
 	.then(data => {
 		if (!data.Item) {
-			sendMessage(sender_psid, `Game ${gameID} not found - check the number is correct`);
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
 			return;
 		}
 
-		let players = data.Item.players.values;
-
+		let playerPSIDs = data.Item.players.values
+		
 		// This doesn't really add anything as if they know the gameID they can join
 		// anyways, however it might be useful in the future
-		if (players.indexOf(sender_psid) == -1) {
-			sendMessage(sender_psid, `Only players who have joined the game can view other players.`);
+		if (playerPSIDs.indexOf(user.facebook_psid) == -1) {
+			user.sendMessage(`Only players who have joined the game can view other players.`);
 			return;
 		}
-
-		Promise.all(players.map(getFirstName))
-		.then(ns => {
-			let names = {};
-			ns.forEach((n, i) => names[players[i]] = n)
-			return names;
-		})
-		.then(names => {
-			sendMessage(sender_psid, `There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${data.Item.gameID}:\n${players.map(p => names[p] + (p == data.Item.owner ? " (creator)" : "")).sort().join('\n')}`);
+		
+		let players = playerPSIDs.map(facebook_psid => new User(facebook_psid));
+		let owner = new User(data.Item.owner);
+		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
+			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${data.Item.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
 		});
 	})
 	.catch(err => {
 		console.log(err);
-		sendMessage(sender_psid, `Unknown error retrieving database`);
+		user.sendMessage(`Unknown error retrieving database`);
 	});
 }
 
-function handleHelp(msg, sender_psid) {
-	sendMessage(sender_psid, `Supported commands:\ncreate\njoin <gameID>\nstart <gameID>\nplayers <gameID>\nhelp`);
+function handleHelp(msg, user) {
+	user.sendMessage(`Supported commands:\ncreate\njoin <gameID>\nstart <gameID>\nplayers <gameID>\nhelp`);
 }
 
-function handleUnrecognized(msg, sender_psid) {
-	sendMessage(sender_psid, `Unrecognized command, try 'help' for a list that work`);
-}
-
-// Returns a promise to get a user's first name with the given psid
-function getFirstName(psid) {
-	return request({
-		"uri": `https://graph.facebook.com/${psid}?fields=first_name&access_token=${process.env.PAGE_ACCESS_TOKEN}`,
-		"method": "GET",
-		json: true
-	}).then(data => data.first_name)
+function handleUnrecognized(msg, user) {
+	user.sendMessage(`Unrecognized command, try 'help' for a list that work`);
 }
 
 // Handles messaging_postbacks events
 function handlePostback(sender_psid, received_postback) {
 
-}
-
-// Sends response messages via the Send API
-function sendMessage(sender_psid, message) {
-	let request_body = {
-		recipient: {
-			id: sender_psid
-		},
-		message: {
-			text: message
-		}
-	};
-
-	// Send the HTTP request to the Messenger Platform
-	request({
-		"uri": "https://graph.facebook.com/v2.6/me/messages",
-		"qs": { "access_token": process.env.PAGE_ACCESS_TOKEN },
-		"method": "POST",
-		"json": request_body
-	})
-	.then(() => {
-		console.log("Message sent" + (message ? ": " + message : ""));
-	})
-	.catch(err => {
-		console.error("Unable to send message:" + err);
-	});
 }
