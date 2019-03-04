@@ -1,11 +1,5 @@
 'use strict';
 
-const AWS = require('aws-sdk');
-const dynamoDB = new AWS.DynamoDB.DocumentClient({
-	params: {
-		TableName: process.env.TABLE_NAME,
-	}
-});
 const User = require('./FacebookUser.js');
 const DynamoDBGameStore = require('./DynamoDBGameStore.js')
 const gameStore = new DynamoDBGameStore();
@@ -51,39 +45,26 @@ function handleDatabase(user, msg) {
 }
 
 function handleCreate(user, msg) {
-	// Find previous games
-	let scanParams = {
-		FilterExpression: '#o = :o',
-		ExpressionAttributeNames: { '#o': 'owner' },
-		ExpressionAttributeValues: { ':o': user.facebook_psid }
-	};
-	dynamoDB.scan(scanParams).promise()
+	gameStore.getGamesOwnedBy(user)
 	.then(data => {
-		return Promise.all(data.Items.map(item => {
-			if (item.gameID == 9999) {
-				user.sendMessage(`Not cancelling test game ${item.gameID}`);
+		return Promise.all(data.Items.map(game => {
+			if (game.gameID == 9999) {
+				user.sendMessage(`Not cancelling test game ${game.gameID}`);
 				return;
 			}
 
-			// Delete previous games
-			let deleteParams = {
-				Key: {
-					'gameID': item.gameID
-				},
-				ReturnValues: "ALL_OLD",
-			};
-			return dynamoDB.delete(deleteParams).promise();
+			return gameStore.deleteGame(game.gameID);
 		}));
 	})
 	.then(returnValues => {
-		returnValues.forEach(data => {
-			if (!data || !data.Attributes || !data.Attributes.gameID) return;
+		returnValues.forEach(game => {
+			if (!game || !game.gameID) return;
 
-			user.sendMessage(`Cancelled previous game ${data.Attributes.gameID}`);
+			user.sendMessage(`Cancelled previous game ${game.gameID}`);
 
-			data.Attributes.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
+			game.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
 				if (player.equals(user)) return;
-				player.sendMessage(`The host cancelled game ${data.Attributes.gameID}`);
+				player.sendMessage(`The host cancelled game ${game.gameID}`);
 			});
 		});
 	})
@@ -92,18 +73,7 @@ function handleCreate(user, msg) {
 		user.sendMessage(`Failed to cancel old games, but continuing anyways.`);
 	})
 	.then(() => {
-		let gameID = generateGameID();
-		let putParams = {
-			Item: {
-				'gameID': gameID,
-				'owner': user.facebook_psid,
-				'players': dynamoDB.createSet([user.facebook_psid]),
-				'ttl': Math.floor(Date.now() / 1000) + 86400 // 24 hour TTL
-			},
-			ConditionExpression: 'attribute_not_exists(gameID)'
-		};
-
-		return dynamoDB.put(putParams).promise().then(() => gameID);
+		return gameStore.createGameWithOwner(user);
 	})
 	.then(gameID => {
 		user.sendMessage(`Created game ${gameID}`);
@@ -114,43 +84,26 @@ function handleCreate(user, msg) {
 	});
 }
 
-function generateGameID() {
-	return Math.floor(Math.random() * (9998 - 1000 + 1) + 1000);
-}
-
 function handleJoin(user, msg) {
 	let gameID = parseInt(msg.slice(5, 9));
-	let params = {
-		Key: {
-			'gameID': gameID,
-		},
-		UpdateExpression: 'ADD players :player',
-		ExpressionAttributeValues: {
-			":player": dynamoDB.createSet([user.facebook_psid])
-		},
-		ConditionExpression: 'attribute_exists(gameID)',
-		ReturnValues: "ALL_NEW",
-	};
 
-	dynamoDB.update(params, function (err, data) {
-		if (err) {
-			if (err.code == 'ConditionalCheckFailedException') {
-				user.sendMessage(`Game ${gameID} not found - check the number is correct`);
-			} else {
-				console.error(err);
-				user.sendMessage(`An unknown error occured (1) - please tell Adam if you see this!`);
-			}
-		} else if (!data.Attributes) {
-			console.error(err);
-			user.sendMessage(`An unknown error occured (2) - please tell Adam if you see this!`);
-		} else {
-			let owner = new User(data.Attributes.owner)
+	gameStore.addUserToGame(user, gameID)
+	.then(game => {
+		let owner = new User(game.owner);
 
-			Promise.all([user.getFirstNamePromise(), owner.getFirstNamePromise()]).then(_ => {
-				user.sendMessage(`Joined ${owner.first_name}'s game ${data.Attributes.gameID}`);
-				owner.sendMessage(`${user.first_name} joined game ${data.Attributes.gameID}`);
-			})
+		Promise.all([user.getFirstNamePromise(), owner.getFirstNamePromise()]).then(_ => {
+			user.sendMessage(`Joined ${owner.first_name}'s game ${game.gameID}`);
+			owner.sendMessage(`${user.first_name} joined game ${game.gameID}`);
+		});
+	})
+	.catch(err => {
+		if (err.code == 'GameNotFound') {
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
+			return;
 		}
+
+		console.error(err);
+		user.sendMessage(`An unknown error occured (1) - please tell Adam if you see this!`);
 	});
 }
 
@@ -176,19 +129,7 @@ function handleStart(user, msg) {
 
 		user.sendMessage(`Game starting with ${players.length} players`);
 
-		// Update the TTL
-		let TTLparams = {
-			Key: {
-				'gameID': gameID,
-			},
-			AttributeUpdates: {
-				'ttl': {
-					Action: 'PUT',
-					Value: Math.floor(Date.now() / 1000) + 86400 // 24 hour TTL
-				}
-			}
-		};
-		dynamoDB.update(TTLparams, (err, data) => { });
+		gameStore.updateTTL(gameID);
 
 		// Get people's roles
 		let [hitler, fascists, liberals] = calcPlayerRoles(players);
