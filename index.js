@@ -8,96 +8,24 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient({
 });
 const User = require('./FacebookUser.js');
 
-exports.handler = (event, context, callback) => {
+exports.handleMessage = (user, msg) => {
+	msg = msg.toLowerCase();
 
-	// GET request is Facebook performing verification
-	if (event.httpMethod == 'GET') {
-		const queryParams = event.queryStringParameters;
-		if (!queryParams || !queryParams['hub.verify_token']) {
-			callback(null, {
-				'body': 'Missing validation token',
-				'statusCode': 400
-			});
-			return;
-		}
-
-		if (!queryParams['hub.challenge']) {
-			callback(null, {
-				'body': 'Missing challenge',
-				'statusCode': 400
-			});
-			return;
-		}
-
-		if (queryParams['hub.verify_token'] != process.env.VERIFY_TOKEN) {
-			callback(null, {
-				'body': 'Wrong validation token',
-				'statusCode': 401
-			});
-			return;
-		}
-
-		callback(null, {
-			'body': queryParams['hub.challenge'],
-			'statusCode': 200
-		});
-	// POST request represents new messages
-	} else if (event.httpMethod == 'POST') {
-		const data = JSON.parse(event.body);
-
-		// Make sure this is a page subscription
-		if (data.object != 'page') {
-			callback(null, {
-				'body': "UNSUPPORTED_OPERATION",
-				'statusCode': 415
-			});
-		}
-
-		// Iterate over each entry - there may be multiple if batched
-		// e.messaging always only has one event, so take index 0
-		data.entry.map(e => e.messaging[0]).forEach(event => {
-			if (event.message) {
-				handleMessage(event.sender.id, event.message);
-			} else if (event.postback) {
-				handlePostback(event.sender.id, event.postback);
-			} else {
-				callback(null, {
-					'body': "UNSUPPORTED_OPERATION",
-					'statusCode': 415
-				});
-				return;
-			}
-		});
-
-		// Let Facebook know we got the message
-		callback(null, {
-			'body': "EVENT_RECEIVED",
-			'statusCode': 200
-		});
-	}
+	if (msg.startsWith('database')) handleDatabase(user, msg);
+	else if (msg.startsWith('create')) handleCreate(user, msg);
+	else if (msg.startsWith('join')) handleJoin(user, msg);
+	// TODO: else if (msg.startsWith('leave'))
+	else if (msg.startsWith('start')) handleStart(user, msg);
+	else if (msg.startsWith('players')) handlePlayers(user, msg);
+	else if (msg.startsWith('help')) handleHelp(user, msg);
+	else handleUnrecognized(user, msg);
 }
 
-// Handles messages events
-function handleMessage(facebook_psid, received_message) {
-	if (!received_message.text) {
-		handleUnrecognized(null, facebook_psid);
-	} else {
-		let msg = received_message.text.toLowerCase();
-		let user = new User(facebook_psid);
-		console.log("Recieved message '" + msg + "' from user with PSID " + user.facebook_psid);
-
-		if (msg.startsWith('database')) handleDatabase(msg, user);
-		else if (msg.startsWith('create')) handleCreate(msg, user);
-		else if (msg.startsWith('join')) handleJoin(msg, user);
-		// TODO: else if (msg.startsWith('leave'))
-		else if (msg.startsWith('start')) handleStart(msg, user);
-		else if (msg.startsWith('players')) handlePlayers(msg, user);
-		else if (msg.startsWith('help')) handleHelp(msg, user);
-		else handleUnrecognized(msg, user);
-	}
+exports.handleNoMessage = (user) => {
+	user.sendMessage(`Something went wrong getting the message to me. Please tell Adam if you see this error.`);
 }
 
-function handleDatabase(msg, user) {
+function handleDatabase(user, msg) {
 	let gameID = parseInt(msg.slice(9, 13));
 	let params = {
 		Key: {
@@ -120,7 +48,7 @@ function handleDatabase(msg, user) {
 	});
 }
 
-function handleCreate(msg, user) {
+function handleCreate(user, msg) {
 	// Find previous games
 	let scanParams = {
 		FilterExpression: '#o = :o',
@@ -188,7 +116,7 @@ function generateGameID() {
 	return Math.floor(Math.random() * (9998 - 1000 + 1) + 1000);
 }
 
-function handleJoin(msg, user) {
+function handleJoin(user, msg) {
 	let gameID = parseInt(msg.slice(5, 9));
 	let params = {
 		Key: {
@@ -224,7 +152,7 @@ function handleJoin(msg, user) {
 	});
 }
 
-function handleStart(msg, user) {
+function handleStart(user, msg) {
 	let gameID = parseInt(msg.slice(6, 10));
 	let params = {
 		Key: {
@@ -338,7 +266,7 @@ function shuffle(arr) {
 	}
 }
 
-function handlePlayers(msg, user) {
+function handlePlayers(user, msg) {
 	let gameID = parseInt(msg.slice(8, 12));
 	let params = {
 		Key: {
@@ -374,15 +302,10 @@ function handlePlayers(msg, user) {
 	});
 }
 
-function handleHelp(msg, user) {
+function handleHelp(user, msg) {
 	user.sendMessage(`Supported commands:\ncreate\njoin <gameID>\nstart <gameID>\nplayers <gameID>\nhelp`);
 }
 
-function handleUnrecognized(msg, user) {
+function handleUnrecognized(user, msg) {
 	user.sendMessage(`Unrecognized command, try 'help' for a list that work`);
-}
-
-// Handles messaging_postbacks events
-function handlePostback(sender_psid, received_postback) {
-
 }
