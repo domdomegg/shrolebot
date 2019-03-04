@@ -25,6 +25,7 @@ functions:
         - index.js
         - Facebook.js
         - FacebookUser.js
+        - DynamoDBGameStore.js
         - node_modules/**
     events:
       - http:

@@ -7,6 +7,8 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient({
 	}
 });
 const User = require('./FacebookUser.js');
+const DynamoDBGameStore = require('./DynamoDBGameStore.js')
+const gameStore = new DynamoDBGameStore();
 
 exports.handleMessage = (user, msg) => {
 	msg = msg.toLowerCase();
@@ -33,22 +35,16 @@ function handleDatabase(user, msg) {
 	}
 
 	let gameID = parseInt(msg.slice(9, 13));
-	let params = {
-		Key: {
-			'gameID': gameID
-		}
-	};
-
-	dynamoDB.get(params).promise()
-	.then(data => {
-		if (!data.Item) {
+	gameStore.getByGameID(gameID)
+	.then(game => {
+		user.sendMessage(JSON.stringify(game, null, '\t'));
+	})
+	.catch(err => {
+		if (err.code == 'GameNotFound') {
 			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
 			return;
 		}
 
-		user.sendMessage(JSON.stringify(data.Item, null, '\t'));
-	})
-	.catch(err => {
 		console.error(err);
 		user.sendMessage(`Unknown error retrieving database`);
 	});
@@ -160,26 +156,14 @@ function handleJoin(user, msg) {
 
 function handleStart(user, msg) {
 	let gameID = parseInt(msg.slice(6, 10));
-	let params = {
-		Key: {
-			'gameID': gameID
-		}
-	};
-
-	dynamoDB.get(params).promise()
-	.then(data => {
-		if (!data.Item) {
-			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
-			user.sendMessage(`Games time out after 24 hours, so you might need to create a new one`);
-			return;
-		}
-
-		if (data.Item.owner != user.facebook_psid) {
+	gameStore.getByGameID(gameID)
+	.then(game => {
+		if (game.owner != user.facebook_psid) {
 			user.sendMessage(`Only the person who created the game can start it.`);
 			return;
 		}
 
-		let players = data.Item.players.values.map(facebook_psid => new User(facebook_psid));
+		let players = game.players.values.map(facebook_psid => new User(facebook_psid));
 
 		if (players.length < 5) {
 			user.sendMessage(`At least 5 players are needed to start a game - currently there ${players.length == 1 ? 'is' : 'are'} only ${players.length}`);
@@ -239,6 +223,12 @@ function handleStart(user, msg) {
 		});
 	})
 	.catch(err => {
+		if (err.code == 'GameNotFound') {
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
+			user.sendMessage(`Games time out after 24 hours, so you might need to create a new one`);
+			return;
+		}
+
 		console.error(err);
 		user.sendMessage(`An unknown error occured (3) - please tell Adam if you see this!`);
 	});
@@ -274,20 +264,9 @@ function shuffle(arr) {
 
 function handlePlayers(user, msg) {
 	let gameID = parseInt(msg.slice(8, 12));
-	let params = {
-		Key: {
-			'gameID': gameID
-		}
-	};
-
-	dynamoDB.get(params).promise()
-	.then(data => {
-		if (!data.Item) {
-			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
-			return;
-		}
-
-		let playerPSIDs = data.Item.players.values
+	gameStore.getByGameID(gameID)
+	.then(game => {
+		let playerPSIDs = game.players.values
 		
 		// This doesn't really add anything as if they know the gameID they can join
 		// anyways, however it might be useful in the future
@@ -297,12 +276,17 @@ function handlePlayers(user, msg) {
 		}
 		
 		let players = playerPSIDs.map(facebook_psid => new User(facebook_psid));
-		let owner = new User(data.Item.owner);
+		let owner = new User(game.owner);
 		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
-			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${data.Item.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
+			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${game.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
 		});
 	})
 	.catch(err => {
+		if (err.code == 'GameNotFound') {
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
+			return;
+		}
+
 		console.error(err);
 		user.sendMessage(`Unknown error retrieving database`);
 	});
