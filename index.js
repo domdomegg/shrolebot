@@ -26,6 +26,12 @@ exports.handleNoMessage = (user) => {
 }
 
 function handleDatabase(user, msg) {
+	if (process.env.STAGE != 'dev') {
+		user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`);
+		console.warn(`User ${user.facebook_psid} tried command '${msg}' in stage '${process.env.STAGE}'`);
+		return;
+	}
+
 	let gameID = parseInt(msg.slice(9, 13));
 	let params = {
 		Key: {
