@@ -150,7 +150,7 @@ class GameStore {
 				':owner_network_scoped_id': owner.network_scoped_id
 			}
 		};
-		return dynamoDB.scan(scanParams).promise();
+		return dynamoDB.scan(scanParams).promise().then(data => data.Items);
 	}
 }
 

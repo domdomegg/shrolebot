@@ -46,27 +46,23 @@ function handleDatabase(user, msg) {
 
 function handleCreate(user, msg) {
 	gameStore.getGamesOwnedBy(user)
-	.then(data => {
-		return Promise.all(data.Items.map(game => {
+	.then(games => {
+		return Promise.all(games.map(game => {
 			if (game.gameID == 9999) {
 				user.sendMessage(`Not cancelling test game ${game.gameID}`);
 				return;
 			}
 
-			return gameStore.deleteGame(game.gameID);
-		}));
-	})
-	.then(returnValues => {
-		returnValues.forEach(game => {
-			if (!game || !game.gameID) return;
-
-			user.sendMessage(`Cancelled previous game ${game.gameID}`);
-
-			game.players.map(p => userGenerator(p)).forEach(player => {
-				if (player.equals(user)) return;
-				player.sendMessage(`The host cancelled game ${game.gameID}`);
+			return gameStore.deleteGame(game.gameID)
+			.then(game => {
+				user.sendMessage(`Cancelled previous game ${game.gameID}`);
+	
+				game.players.map(p => userGenerator(p)).forEach(player => {
+					if (player.equals(user)) return;
+					player.sendMessage(`The host cancelled game ${game.gameID}`);
+				});
 			});
-		});
+		}));
 	})
 	.catch(err => {
 		console.error(err);
@@ -243,7 +239,7 @@ function handlePlayers(user, msg) {
 	gameStore.getByGameID(gameID)
 	.then(game => {
 		let players = game.players.map(p => userGenerator(p));
-		let owner = game.players[0];
+		let owner = players[0];
 
 		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
 			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${game.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
