@@ -111,7 +111,7 @@ function handleStart(user, msg) {
 	let gameID = parseInt(msg.slice(6, 10));
 	gameStore.getByGameID(gameID)
 	.then(game => {
-		if (!user.equals(userGenerator(game.players[0]))) {
+		if (!user.equals(game.players[0])) {
 			user.sendMessage(`Only the person who created the game can start it.`);
 			return;
 		}
