@@ -10,7 +10,7 @@ exports.handleMessage = (user, msg) => {
 	if (msg.startsWith('database')) handleDatabase(user, msg);
 	else if (msg.startsWith('create')) handleCreate(user, msg);
 	else if (msg.startsWith('join')) handleJoin(user, msg);
-	// TODO: else if (msg.startsWith('leave'))
+	else if (msg.startsWith('leave')) handleLeave(user, msg);
 	else if (msg.startsWith('start')) handleStart(user, msg);
 	else if (msg.startsWith('players')) handlePlayers(user, msg);
 	else if (msg.startsWith('help')) handleHelp(user, msg);
@@ -104,6 +104,41 @@ function handleJoin(user, msg) {
 
 		console.error(err);
 		user.sendMessage(`An unknown error occured (1) - please tell Adam if you see this!`);
+	});
+}
+
+function handleLeave(user, msg) {
+	let gameID = parseInt(msg.slice(6, 10));
+	gameStore.removeUserFromGame(user, gameID)
+	.then(game => {
+		if (!game) return;
+
+		user.sendMessage(`You've left game ${game.gameID}`);
+		user.getFirstNamePromise()
+		.then(_ => {
+			game.players.map(p => userGenerator(p)).forEach(player => {
+				player.sendMessage(`${user.first_name} left game ${game.gameID}`);
+			});
+		})
+	})
+	.catch(err => {
+		if (err.code == 'GameNotFound') {
+			user.sendMessage(`Game ${gameID} not found - check the number is correct`);
+			return;
+		}
+
+		if (err.code == 'NotInGame') {
+			user.sendMessage(`You are not in game ${gameID}`);
+			return;
+		}
+
+		if (err.code == 'RemoveGameOwner') {
+			user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`);
+			return;
+		}
+
+		console.error(err);
+		user.sendMessage(`Unknown error retrieving database`);
 	});
 }
 
@@ -226,7 +261,7 @@ function handlePlayers(user, msg) {
 }
 
 function handleHelp(user, msg) {
-	user.sendMessage(`Supported commands:\ncreate\njoin <gameID>\nstart <gameID>\nplayers <gameID>\nhelp`);
+	user.sendMessage(`Supported commands:\ncreate\njoin <gameID>\nleave <gameID>\nstart <gameID>\nplayers <gameID>\nhelp`);
 }
 
 function handleUnrecognized(user, msg) {

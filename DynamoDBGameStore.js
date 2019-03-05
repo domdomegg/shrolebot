@@ -110,6 +110,36 @@ class GameStore {
 		});
 	}
 
+	// Remove a user from a game
+	removeUserFromGame(user, gameID) {
+		return this.getByGameID(gameID)
+		.then(game => {
+			let index = userIndexOf(game.players, user);
+			if (index == -1) {
+				let error = new Error('User is not in that game');
+				error.code = 'NotInGame';
+				throw error;
+			}
+
+			if (index == 0) {
+				let error = new Error('User is game owner');
+				error.code = 'RemoveGameOwner';
+				throw error;
+			}
+			
+			let params = {
+				Key: {
+					'gameID': gameID,
+				},
+				UpdateExpression: 'REMOVE players[' + index + ']',
+				ConditionExpression: 'attribute_exists(gameID)',
+				ReturnValues: "ALL_NEW",
+			};
+			return dynamoDB.update(params).promise()
+			.then(data => data.Attributes);
+		});
+	}
+
 	// Get games owned by a user
 	getGamesOwnedBy(owner) {
 		// Find previous games
@@ -130,6 +160,13 @@ function generateGameID() {
 
 function getTTL() {
 	return Math.floor(Date.now() / 1000) + 86400; // 24 hour TTL
+}
+
+function userIndexOf(arr, user) {
+	for (let i = 0; i < arr.length; i++) {
+		if (user.equals(arr[i])) return i;
+	}
+	return -1;
 }
 
 module.exports = GameStore;
