@@ -1,7 +1,7 @@
 'use strict';
 
-const userGenerator = require('./userGenerator.js');
-const LogicHandler = require('./index.js');
+const userGenerator = require('../common/userGenerator.js');
+const LogicHandler = require('../common/logic.js');
 
 var TelegramBot = require('node-telegram-bot-api');
 var telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_ACCESS_TOKEN, {polling: false});    

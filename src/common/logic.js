@@ -1,6 +1,6 @@
 'use strict';
 
-const DynamoDBGameStore = require('./DynamoDBGameStore.js');
+const DynamoDBGameStore = require('../GameStore/DynamoDBGameStore.js');
 const gameStore = new DynamoDBGameStore();
 const userGenerator = require('./userGenerator.js');
 

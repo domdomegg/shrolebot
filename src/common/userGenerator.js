@@ -1,7 +1,7 @@
 'use strict';
 
-const FacebookUser = require('./FacebookUser.js');
-const TelegramUser = require('./TelegramUser.js');
+const FacebookUser = require('../User/FacebookUser.js');
+const TelegramUser = require('../User/TelegramUser.js');
 
 module.exports = (u) => {
 	switch (u.network_name) {

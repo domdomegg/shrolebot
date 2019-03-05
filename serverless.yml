@@ -20,14 +20,14 @@ provider:
 functions:
   fb:
     description: A Lambda function to handle Facebook Messenger requests for the Secret Hitler Role Bot. Managed by Serverless.
-    handler: Facebook.handler
+    handler: src/handlers/facebook.handler
     events:
       - http:
           method: ANY
           path: /fb
   telegram:
     description: A Lambda function to handle Telegram requests for the Secret Hitler Role Bot. Managed by Serverless.
-    handler: Telegram.handler
+    handler: src/handlers/telegram.handler
     events:
       - http:
           method: ANY
@@ -35,15 +35,7 @@ functions:
 
 package:
   include:
-    - index.js
-    - userGenerator.js
-    - AbstractUser.js
-    - Facebook.js
-    - FacebookUser.js
-    - Telegram.js
-    - TelegramUser.js
-    - DynamoDBGameStore.js
-    - node_modules/**
+    - src/**
   exclude:
     - ./**
 

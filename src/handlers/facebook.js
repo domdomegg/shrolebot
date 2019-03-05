@@ -1,7 +1,7 @@
 'use strict';
 
-const userGenerator = require('./userGenerator.js');
-const LogicHandler = require('./index.js');
+const userGenerator = require('../common/userGenerator.js');
+const LogicHandler = require('../common/logic.js');
 
 exports.handler = (event, context, callback) => {
 	// GET request is Facebook performing verification
