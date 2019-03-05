@@ -10,29 +10,32 @@ provider:
   env-default: ${file(env.yml):default}
   region: ${self:provider.env-default.REGION, self:provider.env-stage.REGION}
   role: ${self:provider.env-default.LAMBDA_ROLE_ARN, self:provider.env-stage.LAMBDA_ROLE_ARN}
+  environment:
+    FB_PAGE_ACCESS_TOKEN: ${self:provider.env-default.FB_PAGE_ACCESS_TOKEN, self:provider.env-stage.FB_PAGE_ACCESS_TOKEN}
+    TABLE_NAME: ${self:provider.tableName}
+    VERIFY_TOKEN: ${self:provider.env-default.VERIFY_TOKEN, self:provider.env-stage.VERIFY_TOKEN}
+    STAGE: ${self:provider.stage}
 
 functions:
   fb:
     description: A Lambda function to handle Facebook Messenger requests for the Secret Hitler Role Bot. Managed by Serverless.
     handler: Facebook.handler
-    environment:
-      PAGE_ACCESS_TOKEN: ${self:provider.env-default.PAGE_ACCESS_TOKEN, self:provider.env-stage.PAGE_ACCESS_TOKEN}
-      TABLE_NAME: ${self:provider.tableName}
-      VERIFY_TOKEN: ${self:provider.env-default.VERIFY_TOKEN, self:provider.env-stage.VERIFY_TOKEN}
-      STAGE: ${self:provider.stage}
-    package:
-      include:
-        - index.js
-        - userGenerator.js
-        - AbstractUser.js
-        - Facebook.js
-        - FacebookUser.js
-        - DynamoDBGameStore.js
-        - node_modules/**
     events:
       - http:
           method: ANY
-          path: /
+          path: /fb
+      STAGE: ${self:provider.stage}
+package:
+  include:
+    - index.js
+    - userGenerator.js
+    - AbstractUser.js
+    - Facebook.js
+    - FacebookUser.js
+    - DynamoDBGameStore.js
+    - node_modules/**
+  exclude:
+    - ./**
 
 resources:
   Resources:
