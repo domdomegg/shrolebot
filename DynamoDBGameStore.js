@@ -81,9 +81,9 @@ class GameStore {
 			Key: {
 				'gameID': gameID,
 			},
-			UpdateExpression: 'SET players = list_append(players, player)',
+			UpdateExpression: 'SET players = list_append(players, :player)',
 			ExpressionAttributeValues: {
-				":player": user
+				":player": [user]
 			},
 			ConditionExpression: 'attribute_exists(gameID)',
 			ReturnValues: "ALL_NEW",
