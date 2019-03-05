@@ -23,6 +23,8 @@ functions:
     package:
       include:
         - index.js
+        - userGenerator.js
+        - AbstractUser.js
         - Facebook.js
         - FacebookUser.js
         - DynamoDBGameStore.js

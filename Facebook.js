@@ -1,6 +1,6 @@
 'use strict';
 
-const User = require('./FacebookUser.js');
+const userGenerator = require('./userGenerator.js');
 const LogicHandler = require('./index.js');
 
 exports.handler = (event, context, callback) => {
@@ -74,13 +74,17 @@ exports.handler = (event, context, callback) => {
 
 // Handles messages events
 function handleMessage(facebook_psid, received_message) {
-	let user = new User(facebook_psid);
+	let user = userGenerator({
+		network_name: 'FACEBOOK',
+		network_scoped_id: facebook_psid,
+		first_name: null
+	});
 
 	if (!received_message || !received_message.text) {
 		LogicHandler.handleNoMessage(user);
 	} else {
 		let msg = received_message.text;	
-		console.log("Recieved message '" + msg + "' from user with PSID " + user.facebook_psid);
+		console.log("Recieved message '" + msg + "' from user with PSID " + facebook_psid);
 		LogicHandler.handleMessage(user, msg);
 	}
 }

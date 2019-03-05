@@ -6,7 +6,6 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient({
 		TableName: process.env.TABLE_NAME,
 	}
 });
-const request = require('request-promise-native');
 
 // User class
 class GameStore {
@@ -38,8 +37,9 @@ class GameStore {
 		let putParams = {
 			Item: {
 				'gameID': gameID,
-				'owner': owner.facebook_psid,
-				'players': dynamoDB.createSet([owner.facebook_psid]),
+				'players': [
+					owner
+				],
 				'ttl': getTTL()
 			},
 			ConditionExpression: 'attribute_not_exists(gameID)'
@@ -81,9 +81,9 @@ class GameStore {
 			Key: {
 				'gameID': gameID,
 			},
-			UpdateExpression: 'ADD players :player',
+			UpdateExpression: 'SET players = list_append(players, player)',
 			ExpressionAttributeValues: {
-				":player": dynamoDB.createSet([user.facebook_psid])
+				":player": user
 			},
 			ConditionExpression: 'attribute_exists(gameID)',
 			ReturnValues: "ALL_NEW",
@@ -114,9 +114,11 @@ class GameStore {
 	getGamesOwnedBy(owner) {
 		// Find previous games
 		let scanParams = {
-			FilterExpression: '#o = :o',
-			ExpressionAttributeNames: { '#o': 'owner' },
-			ExpressionAttributeValues: { ':o': owner.facebook_psid }
+			FilterExpression: 'players[0].network_name = :owner_network_name and players[0].network_scoped_id = :owner_network_scoped_id',
+			ExpressionAttributeValues: {
+				':owner_network_name': owner.network_name,
+				':owner_network_scoped_id': owner.network_scoped_id
+			}
 		};
 		return dynamoDB.scan(scanParams).promise();
 	}

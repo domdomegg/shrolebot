@@ -1,8 +1,8 @@
 'use strict';
 
-const User = require('./FacebookUser.js');
-const DynamoDBGameStore = require('./DynamoDBGameStore.js')
+const DynamoDBGameStore = require('./DynamoDBGameStore.js');
 const gameStore = new DynamoDBGameStore();
+const userGenerator = require('./userGenerator.js');
 
 exports.handleMessage = (user, msg) => {
 	msg = msg.toLowerCase();
@@ -24,7 +24,7 @@ exports.handleNoMessage = (user) => {
 function handleDatabase(user, msg) {
 	if (process.env.STAGE != 'dev') {
 		user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`);
-		console.warn(`User ${user.facebook_psid} tried command '${msg}' in stage '${process.env.STAGE}'`);
+		console.warn(`${user} tried command '${msg}' in stage '${process.env.STAGE}'`);
 		return;
 	}
 
@@ -62,7 +62,7 @@ function handleCreate(user, msg) {
 
 			user.sendMessage(`Cancelled previous game ${game.gameID}`);
 
-			game.players.values.map(facebook_psid => new User(facebook_psid)).forEach(player => {
+			game.players.map(p => userGenerator(p)).forEach(player => {
 				if (player.equals(user)) return;
 				player.sendMessage(`The host cancelled game ${game.gameID}`);
 			});
@@ -89,7 +89,7 @@ function handleJoin(user, msg) {
 
 	gameStore.addUserToGame(user, gameID)
 	.then(game => {
-		let owner = new User(game.owner);
+		let owner = userGenerator(game.players[0]);
 
 		Promise.all([user.getFirstNamePromise(), owner.getFirstNamePromise()]).then(_ => {
 			user.sendMessage(`Joined ${owner.first_name}'s game ${game.gameID}`);
@@ -111,12 +111,12 @@ function handleStart(user, msg) {
 	let gameID = parseInt(msg.slice(6, 10));
 	gameStore.getByGameID(gameID)
 	.then(game => {
-		if (game.owner != user.facebook_psid) {
+		if (!user.equals(userGenerator(game.players[0]))) {
 			user.sendMessage(`Only the person who created the game can start it.`);
 			return;
 		}
 
-		let players = game.players.values.map(facebook_psid => new User(facebook_psid));
+		let players = game.players.map(p => userGenerator(p));
 
 		if (players.length < 5) {
 			user.sendMessage(`At least 5 players are needed to start a game - currently there ${players.length == 1 ? 'is' : 'are'} only ${players.length}`);
@@ -207,17 +207,9 @@ function handlePlayers(user, msg) {
 	let gameID = parseInt(msg.slice(8, 12));
 	gameStore.getByGameID(gameID)
 	.then(game => {
-		let playerPSIDs = game.players.values
-		
-		// This doesn't really add anything as if they know the gameID they can join
-		// anyways, however it might be useful in the future
-		if (playerPSIDs.indexOf(user.facebook_psid) == -1) {
-			user.sendMessage(`Only players who have joined the game can view other players.`);
-			return;
-		}
-		
-		let players = playerPSIDs.map(facebook_psid => new User(facebook_psid));
-		let owner = new User(game.owner);
+		let players = game.players.map(p => userGenerator(p));
+		let owner = game.players[0];
+
 		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
 			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${game.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
 		});
