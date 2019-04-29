@@ -6,6 +6,7 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient({
 		TableName: process.env.TABLE_NAME,
 	}
 });
+const userGenerator = require('../common/userGenerator.js');
 
 // User class
 class GameStore {
@@ -28,18 +29,18 @@ class GameStore {
 			}
 			
 			return data.Item;
-		});
+		})
+		.then(unwrapPlayers);
 	}
 
 	// Creates a game with an owner, returns a promise of a gameID if successful
-	createGameWithOwner(owner) {
+	createGameWithOwner(user) {
 		let gameID = generateGameID();
 		let putParams = {
 			Item: {
 				'gameID': gameID,
-				'players': [
-					owner
-				],
+				'gameOwner': user.toString(),
+				'players': dynamoDB.createSet([user.toString()]),
 				'ttl': getTTL()
 			},
 			ConditionExpression: 'attribute_not_exists(gameID)'
@@ -56,7 +57,9 @@ class GameStore {
 			},
 			ReturnValues: "ALL_OLD",
 		};
-		return dynamoDB.delete(deleteParams).promise().then(data => data.Attributes);
+		return dynamoDB.delete(deleteParams).promise()
+		.then(data => data.Attributes)
+		.then(unwrapPlayers);
 	}
 
 	// Update a game's TTL
@@ -81,9 +84,9 @@ class GameStore {
 			Key: {
 				'gameID': gameID,
 			},
-			UpdateExpression: 'SET players = list_append(players, :player)',
+			UpdateExpression: 'ADD players :user',
 			ExpressionAttributeValues: {
-				":player": [user]
+				":user": dynamoDB.createSet([user.toString()])
 			},
 			ConditionExpression: 'attribute_exists(gameID)',
 			ReturnValues: "ALL_NEW",
@@ -99,59 +102,55 @@ class GameStore {
 
 			throw err;
 		})
-		.then(data => {
-			if (!data.Attributes) {
-				let error = new Error('Game not found in database');
-				error.code = 'GameNotFound';
-				throw error;
-			}
-			
-			return data.Attributes;
-		});
+		.then(data => data.Attributes)
+		.then(unwrapPlayers);
 	}
 
 	// Remove a user from a game
 	removeUserFromGame(user, gameID) {
-		return this.getByGameID(gameID)
-		.then(game => {
-			let index = userIndexOf(game.players, user);
-			if (index == -1) {
-				let error = new Error('User is not in that game');
-				error.code = 'NotInGame';
+		let params = {
+			Key: {
+				'gameID': gameID,
+			},
+			UpdateExpression: 'DELETE players :user',
+			ExpressionAttributeValues: {
+				":user": dynamoDB.createSet([user.toString()])
+			},
+			ConditionExpression: 'attribute_exists(gameID) AND not gameOwner = :user AND contains(players, :user)',
+			ReturnValues: "ALL_NEW",
+		};
+		return dynamoDB.update(params).promise()
+		.catch(err => {
+			if (err.code == 'ConditionalCheckFailedException') {
+				let error = new Error('Game not found in database or player is not in the game or is the owner');
+				error.code = 'GameNotFoundOrPlayerNotInGameOrIsOwner';
 				throw error;
 			}
 
-			if (index == 0) {
-				let error = new Error('User is game owner');
-				error.code = 'RemoveGameOwner';
-				throw error;
-			}
-			
-			let params = {
-				Key: {
-					'gameID': gameID,
-				},
-				UpdateExpression: 'REMOVE players[' + index + ']',
-				ConditionExpression: 'attribute_exists(gameID)',
-				ReturnValues: "ALL_NEW",
-			};
-			return dynamoDB.update(params).promise()
-			.then(data => data.Attributes);
-		});
+			throw err;
+		})
+		.then(data => data.Attributes)
+		.then(unwrapPlayers);
 	}
 
 	// Get games owned by a user
-	getGamesOwnedBy(owner) {
+	getGamesOwnedBy(user) {
 		// Find previous games
 		let scanParams = {
-			FilterExpression: 'players[0].network_name = :owner_network_name and players[0].network_scoped_id = :owner_network_scoped_id',
+			FilterExpression: 'gameOwner = :user',
 			ExpressionAttributeValues: {
-				':owner_network_name': owner.network_name,
-				':owner_network_scoped_id': owner.network_scoped_id
+				':user': user.toString(),
 			}
 		};
 		return dynamoDB.scan(scanParams).promise().then(data => data.Items);
 	}
+}
+
+function unwrapPlayers(gameObj) {
+	gameObj.players = gameObj.players.values.map(JSON.parse).map(userGenerator);
+	gameObj.owner = userGenerator(JSON.parse(gameObj.gameOwner));
+	delete gameObj.gameOwner;
+	return gameObj;
 }
 
 function generateGameID() {
@@ -160,13 +159,6 @@ function generateGameID() {
 
 function getTTL() {
 	return Math.floor(Date.now() / 1000) + 86400; // 24 hour TTL
-}
-
-function userIndexOf(arr, user) {
-	for (let i = 0; i < arr.length; i++) {
-		if (user.equals(arr[i])) return i;
-	}
-	return -1;
 }
 
 module.exports = GameStore;

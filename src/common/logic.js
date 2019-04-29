@@ -2,7 +2,6 @@
 
 const DynamoDBGameStore = require('../GameStore/DynamoDBGameStore.js');
 const gameStore = new DynamoDBGameStore();
-const userGenerator = require('./userGenerator.js');
 
 exports.handleMessage = (user, msg) => {
 	msg = msg.toLowerCase();
@@ -57,7 +56,7 @@ function handleCreate(user, msg) {
 			.then(game => {
 				user.sendMessage(`Cancelled previous game ${game.gameID}`);
 	
-				game.players.map(p => userGenerator(p)).forEach(player => {
+				game.players.forEach(player => {
 					if (player.equals(user)) return;
 					player.sendMessage(`The host cancelled game ${game.gameID}`);
 				});
@@ -85,11 +84,9 @@ function handleJoin(user, msg) {
 
 	gameStore.addUserToGame(user, gameID)
 	.then(game => {
-		let owner = userGenerator(game.players[0]);
-
-		Promise.all([user.getFirstNamePromise(), owner.getFirstNamePromise()]).then(_ => {
-			user.sendMessage(`Joined ${owner.first_name}'s game ${game.gameID}`);
-			owner.sendMessage(`${user.first_name} joined game ${game.gameID}`);
+		Promise.all([user.getFirstNamePromise(), game.owner.getFirstNamePromise()]).then(_ => {
+			user.sendMessage(`Joined ${game.owner.first_name}'s game ${game.gameID}`);
+			game.owner.sendMessage(`${user.first_name} joined game ${game.gameID}`);
 		});
 	})
 	.catch(err => {
@@ -112,7 +109,7 @@ function handleLeave(user, msg) {
 		user.sendMessage(`You've left game ${game.gameID}`);
 		user.getFirstNamePromise()
 		.then(_ => {
-			game.players.map(p => userGenerator(p)).forEach(player => {
+			game.players.forEach(player => {
 				player.sendMessage(`${user.first_name} left game ${game.gameID}`);
 			});
 		})
@@ -133,6 +130,11 @@ function handleLeave(user, msg) {
 			return;
 		}
 
+		if (err.code == 'GameNotFoundOrPlayerNotInGameOrIsOwner') {
+			user.sendMessage(`Game ${gameID} not found, or you are not in game ${gameID}, or you are the creator so cannot leave.`);
+			return;
+		}
+
 		console.error(err);
 		user.sendMessage(`Unknown error retrieving database`);
 	});
@@ -142,31 +144,29 @@ function handleStart(user, msg) {
 	let gameID = parseInt(msg.slice(6, 10));
 	gameStore.getByGameID(gameID)
 	.then(game => {
-		if (!user.equals(game.players[0])) {
+		if (!user.equals(game.owner)) {
 			user.sendMessage(`Only the person who created the game can start it.`);
 			return;
 		}
 
-		let players = game.players.map(p => userGenerator(p));
-
-		if (players.length < 5) {
-			user.sendMessage(`At least 5 players are needed to start a game - currently there ${players.length == 1 ? 'is' : 'are'} only ${players.length}`);
+		if (game.players.length < 5) {
+			user.sendMessage(`At least 5 players are needed to start a game - currently there ${game.players.length == 1 ? 'is' : 'are'} only ${game.players.length}`);
 			return;
 		}
-		if (players.length > 10) {
-			user.sendMessage(`A maximum of 10 people can play a game - currently there are ${players.length}`);
+		if (game.players.length > 10) {
+			user.sendMessage(`A maximum of 10 people can play a game - currently there are ${game.players.length}`);
 			return;
 		}
 
-		user.sendMessage(`Game starting with ${players.length} players`);
+		user.sendMessage(`Game starting with ${game.players.length} players`);
 
 		gameStore.updateTTL(gameID);
 
 		// Get people's roles
-		let [hitler, fascists, liberals] = calcPlayerRoles(players);
+		let [hitler, fascists, liberals] = calcPlayerRoles(game.players);
 
 		// Get people's names
-		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
+		Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
 			if (fascists.length == 1) {
 				hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].first_name}`);
 				fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.first_name}`);
@@ -238,11 +238,8 @@ function handlePlayers(user, msg) {
 	let gameID = parseInt(msg.slice(8, 12));
 	gameStore.getByGameID(gameID)
 	.then(game => {
-		let players = game.players.map(p => userGenerator(p));
-		let owner = players[0];
-
-		Promise.all(players.map(p => p.getFirstNamePromise())).then(_ => {
-			user.sendMessage(`There ${players.length == 1 ? `is 1 player` : `are ${players.length} players`} in game ${game.gameID}:\n${players.map(p => p.first_name + (p.equals(owner) ? " (creator)" : "")).sort().join('\n')}`);
+		Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
+			user.sendMessage(`There ${game.players.length == 1 ? `is 1 player` : `are ${game.players.length} players`} in game ${game.gameID}:\n${game.players.map(p => p.first_name + (p.equals(game.owner) ? " (creator)" : "")).sort().join('\n')}`);
 		});
 	})
 	.catch(err => {

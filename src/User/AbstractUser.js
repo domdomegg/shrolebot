@@ -21,7 +21,11 @@ class AbstractUser {
 	}
 
 	toString() {
-		return `[${this.network_name}, ${this.network_scoped_id}]`;
+		return JSON.stringify({
+			first_name: this.first_name,
+			network_name: this.network_name,
+			network_scoped_id: this.network_scoped_id
+		});
 	}
 
 	toBasicObject() {
