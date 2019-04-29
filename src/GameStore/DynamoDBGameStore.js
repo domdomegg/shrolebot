@@ -135,14 +135,16 @@ class GameStore {
 
 	// Get games owned by a user
 	getGamesOwnedBy(user) {
-		// Find previous games
-		let scanParams = {
-			FilterExpression: 'gameOwner = :user',
+		let params = {
+			IndexName: 'gameOwnerGSI',
+			KeyConditionExpression: 'gameOwner = :user',
 			ExpressionAttributeValues: {
 				':user': user.toString(),
 			}
 		};
-		return dynamoDB.scan(scanParams).promise().then(data => data.Items);
+		  		  
+		return dynamoDB.query(params).promise()
+		.then(data => data.Items.map(unwrapPlayers));
 	}
 }
 
