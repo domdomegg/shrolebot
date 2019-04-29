@@ -1,9 +1,9 @@
 'use strict';
 
+process.env.NTBA_FIX_319 = 1;
 var TelegramBot = require('node-telegram-bot-api');
 var telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_ACCESS_TOKEN, {polling: false});
 
-const request = require('request-promise-native');
 const AbstractUser = require('./AbstractUser.js');
 
 class TelegramUser extends AbstractUser {
