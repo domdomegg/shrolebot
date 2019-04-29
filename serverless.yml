@@ -10,6 +10,7 @@ provider:
   env-default: ${file(env.yml):default}
   region: ${self:provider.env-default.REGION, self:provider.env-stage.REGION}
   role: ${self:provider.env-default.LAMBDA_ROLE_ARN, self:provider.env-stage.LAMBDA_ROLE_ARN}
+  logRetentionInDays: 90
   environment:
     FB_PAGE_ACCESS_TOKEN: ${self:provider.env-default.FB_PAGE_ACCESS_TOKEN, self:provider.env-stage.FB_PAGE_ACCESS_TOKEN}
     TELEGRAM_BOT_ACCESS_TOKEN: ${self:provider.env-default.TELEGRAM_BOT_ACCESS_TOKEN, self:provider.env-stage.TELEGRAM_BOT_ACCESS_TOKEN}
