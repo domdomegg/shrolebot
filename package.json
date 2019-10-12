@@ -15,7 +15,9 @@
     "test": "jest test",
     "test:watch": "jest test --watch",
     "deploy:dev": "serverless deploy --stage dev --verbose",
-    "deploy:prod": "serverless deploy --stage prod --verbose"
+    "deploy:prod": "serverless deploy --stage prod --verbose",
+    "teardown:dev": "serverless remove --stage dev --verbose",
+    "teardown:prod": "serverless remove --stage prod --verbose"
   },
   "jest": {
     "setupFiles": [
