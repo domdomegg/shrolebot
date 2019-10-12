@@ -8,11 +8,19 @@
     "request": "^2.88.0"
   },
   "devDependencies": {
+    "jest": "^24.9.0",
     "serverless": "^1.54.0"
   },
   "scripts": {
+    "test": "jest test",
+    "test:watch": "jest test --watch",
     "deploy:dev": "serverless deploy --stage dev --verbose",
     "deploy:prod": "serverless deploy --stage prod --verbose"
+  },
+  "jest": {
+    "setupFiles": [
+      "./test/fixRequestJest.js"
+    ]
   },
   "repository": {
     "type": "git",
