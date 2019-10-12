@@ -1,5 +1,9 @@
 # Secret Hitler Role Bot
 
+[![CI Status](https://github.com/domdomegg/shrolebot/workflows/CI/badge.svg)](https://github.com/domdomegg/shrolebot/actions?workflow=CI)
+[![JavaScript Standard Style](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/domdomegg/shrolebot/blob/master/LICENSE)
+
 A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform.
 
 Currently has integrations for Facebook Messenger and Telegram, and uses AWS Lambda, DynamoDB and CloudFormation. Can deploy separately to segregated dev and prod environments.
