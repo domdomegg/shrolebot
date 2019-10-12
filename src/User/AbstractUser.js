@@ -1,40 +1,40 @@
-'use strict';
+'use strict'
 
 class AbstractUser {
-	constructor(network_name, network_scoped_id, first_name) {
-		this.network_name = network_name;
-		this.network_scoped_id = network_scoped_id;
-		this.first_name = first_name;
-	}
+  constructor (networkName, networkScopedId, firstName) {
+    this.networkName = networkName
+    this.networkScopedId = networkScopedId
+    this.firstName = firstName
+  }
 
-	getFirstNamePromise() {
-		throw new Error('getFirstNamePromise should be implemented in a concrete class');
-	}
+  getFirstNamePromise () {
+    throw new Error('getFirstNamePromise should be implemented in a concrete class')
+  }
 
-	// Sends response messages via the Send API
-	sendMessage(msg) {
-		throw new Error('sendMessage should be implemented in a concrete class');
-	}
+  // Sends response messages via the Send API
+  sendMessage (msg) {
+    throw new Error('sendMessage should be implemented in a concrete class')
+  }
 
-	equals(user) {
-		return this.network_name = user.network_name && this.network_scoped_id == user.network_scoped_id;
-	}
+  equals (user) {
+    return this.networkName === user.networkName && this.networkScopedId === user.networkScopedId
+  }
 
-	toString() {
-		return JSON.stringify({
-			first_name: this.first_name,
-			network_name: this.network_name,
-			network_scoped_id: this.network_scoped_id
-		});
-	}
+  toString () {
+    return JSON.stringify({
+      firstName: this.firstName,
+      networkName: this.networkName,
+      networkScopedId: this.networkScopedId
+    })
+  }
 
-	toBasicObject() {
-		return {
-			network_name: this.network_name,
-			network_scoped_id: this.network_scoped_id,
-			first_name: this.first_name,
-		}
-	}
+  toBasicObject () {
+    return {
+      networkName: this.networkName,
+      networkScopedId: this.networkScopedId,
+      firstName: this.firstName
+    }
+  }
 }
 
-module.exports = AbstractUser;
+module.exports = AbstractUser

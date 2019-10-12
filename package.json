@@ -9,15 +9,23 @@
   },
   "devDependencies": {
     "jest": "^24.9.0",
-    "serverless": "^1.54.0"
+    "serverless": "^1.54.0",
+    "standard": "^14.3.1"
   },
   "scripts": {
+    "lint": "standard",
+    "lint:fix": "standard --fix",
     "test": "jest test",
     "test:watch": "jest test --watch",
     "deploy:dev": "serverless deploy --stage dev --verbose",
     "deploy:prod": "serverless deploy --stage prod --verbose",
     "teardown:dev": "serverless remove --stage dev --verbose",
     "teardown:prod": "serverless remove --stage prod --verbose"
+  },
+  "standard": {
+    "env": [
+      "jest"
+    ]
   },
   "jest": {
     "setupFiles": [
