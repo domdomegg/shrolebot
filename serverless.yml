@@ -2,7 +2,7 @@ service: secret-hitler-role-bot
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs10.x
   stage: ${opt:stage, 'prod'}
   apiName: ${self:service}-api
   tableName: ${self:service}-${self:provider.stage}-games
