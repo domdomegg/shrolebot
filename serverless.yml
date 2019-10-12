@@ -37,6 +37,7 @@ functions:
 package:
   include:
     - src/**
+    - node_modules/**
   exclude:
     - ./**
 

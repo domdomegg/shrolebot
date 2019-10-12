@@ -4,22 +4,24 @@ A chatbot that allows users to allocate roles for the board game Secret Hitler, 
 
 Currently has integrations for Facebook Messenger and Telegram, and uses AWS Lambda, DynamoDB and CloudFormation. Can deploy seperately to segregated dev and prod environments.
 
-## Dependencies
+## Setup
 
-Install Serverless:
+Install
 ```
-npm install -g serverless
-```
-
-## Installation
-
-Deploy:
-```
-serverless deploy -v
+npm install
 ```
 
-## Uninstallation
+Deploy to dev environemnt
+```
+npm run deploy:dev
+```
 
+Deploy to prod environment
+```
+npm run deploy:prod
+```
+
+Uninstallation
 ```
 serverless remove
 ```

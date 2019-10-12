@@ -1,0 +1,27 @@
+{
+  "name": "shrolebot",
+  "version": "1.0.0",
+  "description": "A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform.",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.30.0",
+    "request-promise-native": "^1.0.7",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "serverless": "^1.54.0"
+  },
+  "scripts": {
+    "deploy:dev": "serverless deploy --stage dev --verbose",
+    "deploy:prod": "serverless deploy --stage prod --verbose"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/domdomegg/shrolebot.git"
+  },
+  "author": "Adam Jones (domdomegg)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/domdomegg/shrolebot/issues"
+  },
+  "homepage": "https://github.com/domdomegg/shrolebot#readme"
+}
