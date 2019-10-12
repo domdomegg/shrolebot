@@ -1,27 +1,24 @@
 const { DocumentClient } = require('aws-sdk/clients/dynamodb')
-
-const config = {
-  convertEmptyValues: true,
-  ...(process.env.JEST_WORKER_ID && { endpoint: 'localhost:8000', sslEnabled: false, region: 'local-env' }),
-  TableName: 'secret-hitler-role-bot-dev-games'
-}
-
-const ddb = new DocumentClient(config)
+const dynamoDB = new DocumentClient({
+  endpoint: 'localhost:8000',
+  sslEnabled: false,
+  region: 'local-env',
+  params: {
+    TableName: 'secret-hitler-role-bot-dev-games'
+  }
+})
 
 it('should insert into and retrieve from table', async () => {
-  await ddb.put({
+  await dynamoDB.put({
     Item: {
       gameID: 1234,
       gameOwner: 'somebody',
-      players: ddb.createSet(['somebody', 'someone else']),
+      players: dynamoDB.createSet(['somebody', 'someone else']),
       ttl: 1602451810
-    },
-    ConditionExpression: 'attribute_not_exists(gameID)',
-    TableName: 'secret-hitler-role-bot-dev-games'
+    }
   }).promise()
 
-  const { Item } = await ddb.get({
-    TableName: 'secret-hitler-role-bot-dev-games',
+  const { Item } = await dynamoDB.get({
     Key: {
       gameID: 1234
     }
