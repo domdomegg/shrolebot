@@ -1,6 +1,6 @@
 # Secret Hitler Role Bot
 
-[![CI Status](https://github.com/domdomegg/shrolebot/workflows/CI/badge.svg)](https://github.com/domdomegg/shrolebot/actions?workflow=CI)
+[![CI/CD Status](https://github.com/domdomegg/shrolebot/workflows/CI/CD/badge.svg)](https://github.com/domdomegg/shrolebot/actions?workflow=CI/CD)
 [![JavaScript Standard Style](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/domdomegg/shrolebot/blob/master/LICENSE)
 
