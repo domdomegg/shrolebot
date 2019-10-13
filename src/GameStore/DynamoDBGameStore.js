@@ -111,9 +111,10 @@ class GameStore {
       Key: {
         gameID: gameID
       },
-      UpdateExpression: 'DELETE players :user',
+      UpdateExpression: 'DELETE players :userSet',
       ExpressionAttributeValues: {
-        ':user': dynamoDB.createSet([user.toString()])
+        ':userSet': dynamoDB.createSet([user.toString()]),
+        ':user': user.toString()
       },
       ConditionExpression: 'attribute_exists(gameID) AND not gameOwner = :user AND contains(players, :user)',
       ReturnValues: 'ALL_NEW'
@@ -122,7 +123,7 @@ class GameStore {
       .catch(err => {
         if (err.code === 'ConditionalCheckFailedException') {
           const error = new Error('Game not found in database or player is not in the game or is the owner')
-          error.code = 'GameNotFoundOrPlayerNotInGameOrIsOwner'
+          error.code = 'GameNotFound|PlayerNotInGame|CannotRemoveGameOwner'
           throw error
         }
 

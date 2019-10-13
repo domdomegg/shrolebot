@@ -27,7 +27,8 @@
   "standard": {
     "env": [
       "jest"
-    ]
+    ],
+    "globals": [ "fail" ]
   },
   "jest": {
     "preset": "@shelf/jest-dynamodb",

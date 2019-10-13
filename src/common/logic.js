@@ -125,12 +125,12 @@ function handleLeave (user, msg) {
         return
       }
 
-      if (err.code === 'RemoveGameOwner') {
+      if (err.code === 'CannotRemoveGameOwner') {
         user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`)
         return
       }
 
-      if (err.code === 'GameNotFoundOrPlayerNotInGameOrIsOwner') {
+      if (err.code === 'GameNotFound|PlayerNotInGame|CannotRemoveGameOwner') {
         user.sendMessage(`Game ${gameID} not found, or you are not in game ${gameID}, or you are the creator so cannot leave.`)
         return
       }
