@@ -1,10 +1,8 @@
-process.env.TABLE_NAME = 'secret-hitler-role-bot-dev-games'
+const utils = require('../utils')
 
 const logic = require('../../src/common/logic')
 
-const DynamoDBGameStore = require('../../src/GameStore/DynamoDBGameStore')
-const gameStore = new DynamoDBGameStore()
-const MockUser = require('../../src/User/MockUser')
+const gameStore = utils.getGameStore()
 
 const mock = {}
 
@@ -12,9 +10,7 @@ beforeAll(() => {
   mock.console = {
     warn: jest.spyOn(console, 'warn').mockImplementation()
   }
-  mock.user = {
-    sendMessage: jest.fn()
-  }
+  mock.user = utils.createMockUser('somebody')
 })
 
 afterEach(() => {
@@ -47,7 +43,7 @@ it('disallows the database command in prod', async () => {
 it('can handle the database command in dev', async () => {
   // GIVEN
   process.env.STAGE = 'dev'
-  const gameID = await gameStore.createGameWithOwner(new MockUser('MOCK', 1234567, 'somebody'))
+  const gameID = await gameStore.createGameWithOwner(utils.createMockUser('somebody', 1234567))
 
   // WHEN
   await logic.handleMessage(mock.user, 'database ' + gameID)

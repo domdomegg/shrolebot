@@ -4,7 +4,7 @@ const dynamoDB = new DocumentClient({
   sslEnabled: false,
   region: 'local-env',
   params: {
-    TableName: 'secret-hitler-role-bot-dev-games'
+    TableName: process.env.TABLE_NAME
   }
 })
 
@@ -12,8 +12,8 @@ it('should insert into and retrieve from table', async () => {
   await dynamoDB.put({
     Item: {
       gameID: 1234,
-      gameOwner: 'somebody',
-      players: dynamoDB.createSet(['somebody', 'someone else']),
+      gameOwner: '{"firstName":"somebody","networkName":"MOCK"}',
+      players: dynamoDB.createSet(['{"firstName":"somebody","networkName":"MOCK"}', '{"firstName":"someone else","networkName":"MOCK"}']),
       ttl: 1602451810
     }
   }).promise()
@@ -25,7 +25,7 @@ it('should insert into and retrieve from table', async () => {
   }).promise()
 
   expect(Item.gameID).toBe(1234)
-  expect(Item.gameOwner).toBe('somebody')
-  expect(Item.players.values).toEqual(['somebody', 'someone else'])
+  expect(Item.gameOwner).toBe('{"firstName":"somebody","networkName":"MOCK"}')
+  expect(Item.players.values).toEqual(['{"firstName":"somebody","networkName":"MOCK"}', '{"firstName":"someone else","networkName":"MOCK"}'])
   expect(Item.ttl).toBe(1602451810)
 })

@@ -1,15 +1,13 @@
-'use strict'
-
-const AbstractUser = require('./AbstractUser.js')
+const AbstractUser = require('./AbstractUser')
 
 class MockUser extends AbstractUser {
-  getFirstNamePromise () {
-    return Promise.resolve(this.firstName)
+  constructor () {
+    super(...arguments)
+    this.sendMessage = jest.fn().mockResolvedValue()
   }
 
-  sendMessage (msg) {
-    console.log(`MockUser '${this}' sending message '${msg}'`)
-    return Promise.resolve()
+  getFirstNamePromise () {
+    return Promise.resolve(this.firstName)
   }
 }
 

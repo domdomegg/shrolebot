@@ -33,7 +33,8 @@
   "jest": {
     "preset": "@shelf/jest-dynamodb",
     "setupFiles": [
-      "./test/fixRequestJest.js"
+      "./test/fixRequestJest.js",
+      "./test/environmentVariables.js"
     ]
   },
   "repository": {

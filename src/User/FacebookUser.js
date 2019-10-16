@@ -1,7 +1,7 @@
 'use strict'
 
 const request = require('request-promise-native')
-const AbstractUser = require('./AbstractUser.js')
+const AbstractUser = require('./AbstractUser')
 
 class FacebookUser extends AbstractUser {
   async getFirstNamePromise () {

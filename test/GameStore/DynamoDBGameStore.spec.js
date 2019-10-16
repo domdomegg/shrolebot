@@ -1,30 +1,13 @@
-process.env.TABLE_NAME = 'secret-hitler-role-bot-dev-games'
-const { DocumentClient } = require('aws-sdk/clients/dynamodb')
-const dynamoDB = new DocumentClient({
-  endpoint: 'localhost:8000',
-  sslEnabled: false,
-  region: 'local-env',
-  params: {
-    TableName: process.env.TABLE_NAME
-  }
-})
+const utils = require('../utils')
 
-// Use line number to generate a gameID that is guaranteed not to clash
-const getLineNumber = () => parseInt(/\((.*):(\d+):(\d+)\)$/.exec(new Error().stack.split('\n')[2])[2])
-const userGenerator = require('../../src/common/userGenerator')
-const createMockUser = firstName => userGenerator({
-  firstName,
-  networkName: 'MOCK'
-})
-
-const DynamoDBGameStore = require('../../src/GameStore/DynamoDBGameStore')
-const gameStore = new DynamoDBGameStore()
+const dynamoDB = utils.getDocumentClient()
+const gameStore = utils.getGameStore()
 
 it('can retrieve a game by gameID', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
-  const gameID = getLineNumber()
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
+  const gameID = utils.getLineNumber()
   await dynamoDB.put({
     Item: {
       gameID,
@@ -48,7 +31,7 @@ it('can retrieve a game by gameID', async () => {
 
 it('can create a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
+  const owner = utils.createMockUser('somebody')
 
   // WHEN
   const gameID = await gameStore.createGameWithOwner(owner)
@@ -63,7 +46,7 @@ it('can create a game', async () => {
 
 it('should create games with a TTL <= 1 day', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
+  const owner = utils.createMockUser('somebody')
   const secondsInADay = 60 * 60 * 24
 
   // WHEN
@@ -76,7 +59,7 @@ it('should create games with a TTL <= 1 day', async () => {
 
 it('can delete a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
+  const owner = utils.createMockUser('somebody')
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
@@ -92,7 +75,7 @@ it('can delete a game', async () => {
 
 it('should return the old game on deletion', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
+  const owner = utils.createMockUser('somebody')
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
@@ -105,7 +88,7 @@ it('should return the old game on deletion', async () => {
 
 it('can update a game\'s TTL', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
+  const owner = utils.createMockUser('somebody')
   const gameID = 1235
   await dynamoDB.put({
     Item: {
@@ -126,8 +109,8 @@ it('can update a game\'s TTL', async () => {
 
 it('can add a user to a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
   expect((await gameStore.getByGameID(gameID)).players).toHaveLength(1)
 
@@ -143,8 +126,8 @@ it('can add a user to a game', async () => {
 
 it('should return the updated game on adding a user to a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
@@ -158,8 +141,8 @@ it('should return the updated game on adding a user to a game', async () => {
 
 it('should be idempotent in adding a user to a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
@@ -173,8 +156,8 @@ it('should be idempotent in adding a user to a game', async () => {
 
 it('should fail if adding a user to a non-existent game', async () => {
   // GIVEN
-  const player = createMockUser('somebody')
-  const nonExistentGameID = getLineNumber()
+  const player = utils.createMockUser('somebody')
+  const nonExistentGameID = utils.getLineNumber()
 
   // WHEN
   await gameStore.addUserToGame(player, nonExistentGameID)
@@ -187,8 +170,8 @@ it('should fail if adding a user to a non-existent game', async () => {
 
 it('can remove a user from a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
   await gameStore.addUserToGame(otherPlayer, gameID)
   expect((await gameStore.getByGameID(gameID)).players).toHaveLength(2)
@@ -204,8 +187,8 @@ it('can remove a user from a game', async () => {
 
 it('should return the updated game on removing a user from a game', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
   await gameStore.addUserToGame(otherPlayer, gameID)
 
@@ -219,8 +202,8 @@ it('should return the updated game on removing a user from a game', async () => 
 
 it('should fail if removing a user from a game they are not in', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
@@ -234,8 +217,8 @@ it('should fail if removing a user from a game they are not in', async () => {
 
 it('should fail if removing a user from a non-existent game', async () => {
   // GIVEN
-  const player = createMockUser('somebody')
-  const nonExistentGameID = getLineNumber()
+  const player = utils.createMockUser('somebody')
+  const nonExistentGameID = utils.getLineNumber()
 
   // WHEN
   await gameStore.removeUserFromGame(player, nonExistentGameID)
@@ -248,8 +231,8 @@ it('should fail if removing a user from a non-existent game', async () => {
 
 it('should fail if removing the game owner', async () => {
   // GIVEN
-  const owner = createMockUser('somebody')
-  const otherPlayer = createMockUser('someone else')
+  const owner = utils.createMockUser('somebody')
+  const otherPlayer = utils.createMockUser('someone else')
   const gameID = await gameStore.createGameWithOwner(owner)
   await gameStore.addUserToGame(otherPlayer, gameID)
 
@@ -264,7 +247,7 @@ it('should fail if removing the game owner', async () => {
 
 it('can get games owned by a user when they have none', async () => {
   // GIVEN
-  const owner = createMockUser(`someone ${getLineNumber()}`)
+  const owner = utils.createMockUser(`someone ${utils.getLineNumber()}`)
 
   // WHEN
   const games = await gameStore.getGamesOwnedBy(owner)
@@ -275,7 +258,7 @@ it('can get games owned by a user when they have none', async () => {
 
 it('can get games owned by a user when they have one', async () => {
   // GIVEN
-  const owner = createMockUser(`someone ${getLineNumber()}`)
+  const owner = utils.createMockUser(`someone ${utils.getLineNumber()}`)
   const gameID = await gameStore.createGameWithOwner(owner)
 
   // WHEN
