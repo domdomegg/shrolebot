@@ -9,6 +9,7 @@ class MockUser extends AbstractUser {
 
   sendMessage (msg) {
     console.log(`MockUser '${this}' sending message '${msg}'`)
+    return Promise.resolve()
   }
 }
 

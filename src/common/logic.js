@@ -6,14 +6,14 @@ const gameStore = new DynamoDBGameStore()
 exports.handleMessage = (user, msg) => {
   msg = msg.toLowerCase()
 
-  if (msg.startsWith('database')) handleDatabase(user, msg)
-  else if (msg.startsWith('create')) handleCreate(user, msg)
-  else if (msg.startsWith('join')) handleJoin(user, msg)
-  else if (msg.startsWith('leave')) handleLeave(user, msg)
-  else if (msg.startsWith('start')) handleStart(user, msg)
-  else if (msg.startsWith('players')) handlePlayers(user, msg)
-  else if (msg.startsWith('help')) handleHelp(user, msg)
-  else handleUnrecognized(user, msg)
+  if (msg.startsWith('database')) return handleDatabase(user, msg)
+  else if (msg.startsWith('create')) return handleCreate(user, msg)
+  else if (msg.startsWith('join')) return handleJoin(user, msg)
+  else if (msg.startsWith('leave')) return handleLeave(user, msg)
+  else if (msg.startsWith('start')) return handleStart(user, msg)
+  else if (msg.startsWith('players')) return handlePlayers(user, msg)
+  else if (msg.startsWith('help')) return handleHelp(user, msg)
+  else return handleUnrecognized(user, msg)
 }
 
 exports.handleNoMessage = (user) => {
@@ -22,24 +22,22 @@ exports.handleNoMessage = (user) => {
 
 function handleDatabase (user, msg) {
   if (process.env.STAGE !== 'dev') {
-    user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`)
     console.warn(`${user} tried command '${msg}' in stage '${process.env.STAGE}'`)
-    return
+    return user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`)
   }
 
   const gameID = parseInt(msg.slice(9, 13))
-  gameStore.getByGameID(gameID)
-    .then(game => {
+  return gameStore.getByGameID(gameID)
+    .then(game =>
       user.sendMessage(JSON.stringify(game, null, '\t'))
-    })
+    )
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found - check the number is correct`)
-        return
+        return user.sendMessage(`Game ${gameID} not found - check the number is correct`)
       }
 
       console.error(err)
-      user.sendMessage('Unknown error retrieving database')
+      return user.sendMessage('Unknown error retrieving database')
     })
 }
 

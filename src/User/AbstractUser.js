@@ -11,7 +11,7 @@ class AbstractUser {
     throw new Error('getFirstNamePromise should be implemented in a concrete class')
   }
 
-  // Sends response messages via the Send API
+  // Sends response messages, returns a promise
   sendMessage (msg) {
     throw new Error('sendMessage should be implemented in a concrete class')
   }
