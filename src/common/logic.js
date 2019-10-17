@@ -13,6 +13,7 @@ exports.handleMessage = (user, msg) => {
   else if (msg.startsWith('start')) return handleStart(user, msg)
   else if (msg.startsWith('players')) return handlePlayers(user, msg)
   else if (msg.startsWith('help')) return handleHelp(user, msg)
+  else if (msg.startsWith('version')) return handleVersion(user, msg)
   else return handleUnrecognized(user, msg)
 }
 
@@ -252,9 +253,13 @@ function handlePlayers (user, msg) {
 }
 
 function handleHelp (user, msg) {
-  user.sendMessage('Supported commands:\ncreate\njoin <gameID>\nleave <gameID>\nstart <gameID>\nplayers <gameID>\nhelp')
+  return user.sendMessage('Supported commands:\ncreate\njoin <gameID>\nleave <gameID>\nstart <gameID>\nplayers <gameID>\nhelp')
+}
+
+function handleVersion (user, msg) {
+  return user.sendMessage(`Version ${process.env.VERSION}`)
 }
 
 function handleUnrecognized (user, msg) {
-  user.sendMessage('Unrecognized command, try \'help\' for a list that work')
+  return user.sendMessage('Unrecognized command, try \'help\' for a list that work')
 }

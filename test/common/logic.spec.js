@@ -18,7 +18,7 @@ afterEach(() => {
   mock.user.sendMessage.mockReset()
 })
 
-it('can handle no message', () => {
+it('handles no message', () => {
   // WHEN
   logic.handleNoMessage(mock.user)
 
@@ -40,7 +40,7 @@ it('disallows the database command in prod', async () => {
   expect(mock.console.warn).toBeCalledWith(`${mock.user} tried command 'database 1234' in stage 'prod'`)
 })
 
-it('can handle the database command in dev', async () => {
+it('handles the database command in dev', async () => {
   // GIVEN
   process.env.STAGE = 'dev'
   const gameID = await gameStore.createGameWithOwner(utils.createMockUser('somebody', 1234567))
@@ -59,7 +59,7 @@ it('can handle the database command in dev', async () => {
   expect(parsedMsg.owner).toEqual({ firstName: 'somebody', networkName: 'MOCK', networkScopedId: 1234567 })
 })
 
-it('can handle the database command with an invalid gameID', async () => {
+it('handles the database command in dev with an invalid gameID', async () => {
   // GIVEN
   process.env.STAGE = 'dev'
 
@@ -69,4 +69,28 @@ it('can handle the database command with an invalid gameID', async () => {
   // THEN
   expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
   expect(mock.user.sendMessage).toBeCalledWith('Game 4713 not found - check the number is correct')
+})
+
+it('handles the version command when known', async () => {
+  // GIVEN
+  process.env.VERSION = '20191017.000000.abcd123'
+
+  // WHEN
+  await logic.handleMessage(mock.user, 'version')
+
+  // THEN
+  expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
+  expect(mock.user.sendMessage).toBeCalledWith('Version 20191017.000000.abcd123')
+})
+
+it('handles the version command when UNKNOWN', async () => {
+  // GIVEN
+  process.env.VERSION = 'UNKNOWN'
+
+  // WHEN
+  await logic.handleMessage(mock.user, 'version')
+
+  // THEN
+  expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
+  expect(mock.user.sendMessage).toBeCalledWith('Version UNKNOWN')
 })
