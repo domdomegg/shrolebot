@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform.",
   "dependencies": {
-    "aws-sdk": "^2.548.0",
+    "aws-sdk": "^2.551.0",
     "node-telegram-bot-api": "^0.30.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.7"
