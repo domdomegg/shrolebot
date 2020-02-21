@@ -19,8 +19,8 @@
     "lint:fix": "standard --fix",
     "test": "jest test",
     "test:watch": "jest test --watch",
-    "deploy:dev": "bash -c \"serverless deploy --stage dev --verbose --version \\\"$(date --utc +%Y%m%d.%H%M%S).$(git rev-parse --short HEAD)\\\"\"",
-    "deploy:prod": "bash -c \"serverless deploy --stage prod --verbose --version \\\"$(date --utc +%Y%m%d.%H%M%S).$(git rev-parse --short HEAD)\\\"\"",
+    "deploy:dev": "serverless deploy --stage dev --verbose",
+    "deploy:prod": "serverless deploy --stage prod --verbose",
     "teardown:dev": "serverless remove --stage dev --verbose",
     "teardown:prod": "serverless remove --stage prod --verbose"
   },

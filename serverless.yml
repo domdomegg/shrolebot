@@ -17,7 +17,7 @@ provider:
     TABLE_NAME: ${self:provider.tableName}
     VERIFY_TOKEN: ${self:provider.env-default.VERIFY_TOKEN, self:provider.env-stage.VERIFY_TOKEN}
     STAGE: ${self:provider.stage}
-    VERSION: ${opt:version, 'UNKNOWN'}
+    VERSION: ${file(version.js):VERSION, 'UNKNOWN'}
 
 functions:
   fb:
