@@ -258,41 +258,41 @@ function handlePlayers (user, msg) {
 }
 
 function handleHelp (user, msg) {
-  let specificCommandHelp = false
+  let sentMessage = false
 
   if (msg.includes('create')) {
     user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('join')) {
     user.sendMessage('🙌 \'join <game id>\' (for example \'join 1234\') joins an existing game. The game creator will have been told the game id when they created it with \'create\'.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('leave')) {
     user.sendMessage('😢 \'leave <game id>\' (for example \'leave 1234\') leaves an existing game you previously joined.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('start')) {
     user.sendMessage('🎲 \'start <game id>\' (for example \'start 1234\') starts an existing game you\'re the creator of. This will allocate everyone roles, and can be called as many times as you want, allocating each player a random role each time.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('players')) {
     user.sendMessage('🧑‍🤝‍🧑 \'players <game id>\' (for example \'players 1234\') lists all the players who have joined the specified game, and identifies the creator.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('version')) {
     user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('database')) {
     user.sendMessage('🕵 \'database <game id>\' (for example \'database 1234\') returns the information in the database for that game. Only available in dev.')
-    specificCommandHelp = true
+    sentMessage = true
   }
 
   if (msg.includes('list')) {
@@ -300,9 +300,10 @@ function handleHelp (user, msg) {
       '📜 All supported commands:\ncreate\njoin <game id>\nleave <game id>\nstart <game id>\nplayers <game id>\nhelp\nhelp <command>\nversion' +
       (process.env.STAGE === 'dev' ? '\ndatabase <game id>' : '')
     )
+    sentMessage = true
   }
 
-  if (!specificCommandHelp) {
+  if (!sentMessage) {
     user.sendMessage('Quick guide:\n1️⃣ Someone creates a game with \'create\' and gets a game id.\n2️⃣ Other players join with \'join <game id>\' (e.g. \'join 1234\')\n3️⃣ The creator starts it with \'start <game id>\' (eg. \'start 1234\')\n\nFor more details run \'help list\' or \'help <command>\'')
   }
 }
