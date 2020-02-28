@@ -34,7 +34,7 @@ function handleDatabase (user, msg) {
     )
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        return user.sendMessage(`Game ${gameID} not found - check the number is correct`)
+        return user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
       }
 
       console.error(err)
@@ -70,7 +70,7 @@ function handleCreate (user, msg) {
       return gameStore.createGameWithOwner(user)
     })
     .then(gameID => {
-      user.sendMessage(`Created game ${gameID}`)
+      user.sendMessage(`Created game ${gameID} 🎉 - tell your friends to join with 'join ${gameID}'`)
     })
     .catch(err => {
       console.error(err)
@@ -84,13 +84,16 @@ function handleJoin (user, msg) {
   gameStore.addUserToGame(user, gameID)
     .then(game => {
       Promise.all([user.getFirstNamePromise(), game.owner.getFirstNamePromise()]).then(_ => {
-        user.sendMessage(`Joined ${game.owner.firstName}'s game ${game.gameID}`)
+        user.sendMessage(`Joined ${game.owner.firstName}'s game ${game.gameID} 🎉`)
         game.owner.sendMessage(`${user.firstName} joined game ${game.gameID}`)
+        if (game.players.length === 5) {
+          game.owner.sendMessage(`You can now start it with 'start ${game.gameID}' ✨`)
+        }
       })
     })
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found - check the number is correct`)
+        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
         return
       }
 
@@ -115,7 +118,7 @@ function handleLeave (user, msg) {
     })
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found - check the number is correct`)
+        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
         return
       }
 
@@ -144,20 +147,22 @@ function handleStart (user, msg) {
   gameStore.getByGameID(gameID)
     .then(game => {
       if (!user.equals(game.owner)) {
-        user.sendMessage('Only the person who created the game can start it.')
+        game.owner.getFirstNamePromise().then(firstName => {
+          user.sendMessage(`Only ${firstName}, who created the game, can start it.`)
+        })
         return
       }
 
       if (game.players.length < 5) {
-        user.sendMessage(`At least 5 players are needed to start a game - currently there ${game.players.length === 1 ? 'is' : 'are'} only ${game.players.length}`)
+        user.sendMessage(`At least 5 players are needed to start a game - currently there ${game.players.length === 1 ? 'is' : 'are'} only ${game.players.length} 😞`)
         return
       }
       if (game.players.length > 10) {
-        user.sendMessage(`A maximum of 10 people can play a game - currently there are ${game.players.length}`)
+        user.sendMessage(`A maximum of 10 people can play a game - currently there are ${game.players.length} 😮`)
         return
       }
 
-      user.sendMessage(`Game starting with ${game.players.length} players`)
+      user.sendMessage(`Game starting with ${game.players.length} players 🎲`)
 
       gameStore.updateTTL(gameID)
 
@@ -167,17 +172,17 @@ function handleStart (user, msg) {
       // Get people's names
       Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
         if (fascists.length === 1) {
-          hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].firstName}`)
-          fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}`)
+          hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].firstName}. 😈`)
+          fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}. 😈 `)
         } else {
-          hitler.sendMessage('You are Hitler!')
+          hitler.sendMessage('You are Hitler! 😈')
 
           fascists.forEach(fascistPlayer => {
             const otherFascists = fascists.filter(f => f !== fascistPlayer)
             if (otherFascists.length === 1) {
-              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascist is ${otherFascists[0].firstName}.`)
+              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascist is ${otherFascists[0].firstName}. 😈`)
             } else {
-              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascists are ${otherFascists.map(f => f.firstName).join(' and ')}.`)
+              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascists are ${otherFascists.map(f => f.firstName).join(' and ')}. 😈`)
             }
           })
         }
@@ -188,15 +193,15 @@ function handleStart (user, msg) {
         })
 
         liberals.forEach(player => {
-          player.sendMessage('You are liberal!')
+          player.sendMessage('You are liberal! 😇')
           player.sendMessage('You can show your group membership at https://goo.gl/x1hekt')
         })
       })
     })
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found - check the number is correct`)
-        user.sendMessage('Games time out after 24 hours, so you might need to create a new one')
+        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+        user.sendMessage('Games time out after 24 hours, so you might need to create a new one ⌛')
         return
       }
 
@@ -238,12 +243,12 @@ function handlePlayers (user, msg) {
   gameStore.getByGameID(gameID)
     .then(game => {
       Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
-        user.sendMessage(`There ${game.players.length === 1 ? 'is 1 player' : `are ${game.players.length} players`} in game ${game.gameID}:\n${game.players.map(p => p.firstName + (p.equals(game.owner) ? ' (creator)' : '')).sort().join('\n')}`)
+        user.sendMessage(`There ${game.players.length === 1 ? 'is 1 player' : `are ${game.players.length} players`} in game ${game.gameID}:\n${game.players.map(p => p.firstName + (p.equals(game.owner) ? ' (👑 creator)' : '')).sort().join('\n')}`)
       })
     })
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found - check the number is correct`)
+        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
         return
       }
 
@@ -253,7 +258,53 @@ function handlePlayers (user, msg) {
 }
 
 function handleHelp (user, msg) {
-  return user.sendMessage('Supported commands:\ncreate\njoin <gameID>\nleave <gameID>\nstart <gameID>\nplayers <gameID>\nhelp')
+  let specificCommandHelp = false
+
+  if (msg.includes('create')) {
+    user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('join')) {
+    user.sendMessage('🙌 \'join <game id>\' (for example \'join 1234\') joins an existing game. The game creator will have been told the game id when they created it with \'create\'.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('leave')) {
+    user.sendMessage('😢 \'leave <game id>\' (for example \'leave 1234\') leaves an existing game you previously joined.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('start')) {
+    user.sendMessage('🎲 \'start <game id>\' (for example \'start 1234\') starts an existing game you\'re the creator of. This will allocate everyone roles, and can be called as many times as you want, allocating each player a random role each time.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('players')) {
+    user.sendMessage('🧑‍🤝‍🧑 \'players <game id>\' (for example \'players 1234\') lists all the players who have joined the specified game, and identifies the creator.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('version')) {
+    user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('database')) {
+    user.sendMessage('🕵 \'database <game id>\' (for example \'database 1234\') returns the information in the database for that game. Only available in dev.')
+    specificCommandHelp = true
+  }
+
+  if (msg.includes('list')) {
+    user.sendMessage(
+      '📜 All supported commands:\ncreate\njoin <game id>\nleave <game id>\nstart <game id>\nplayers <game id>\nhelp\nhelp <command>\nversion' +
+      (process.env.STAGE === 'dev' ? '\ndatabase <game id>' : '')
+    )
+  }
+
+  if (!specificCommandHelp) {
+    user.sendMessage('Quick guide:\n1️⃣ Someone creates a game with \'create\' and gets a game id.\n2️⃣ Other players join with \'join <game id>\' (e.g. \'join 1234\')\n3️⃣ The creator starts it with \'start <game id>\' (eg. \'start 1234\')\n\nFor more details run \'help list\' or \'help <command>\'')
+  }
 }
 
 function handleVersion (user, msg) {
@@ -261,5 +312,5 @@ function handleVersion (user, msg) {
 }
 
 function handleUnrecognized (user, msg) {
-  return user.sendMessage('Unrecognized command, try \'help\' for a list that work')
+  return user.sendMessage('I didn\'t understand that 😕 - try \'help\' if you\'re lost')
 }

@@ -68,7 +68,7 @@ it('handles the database command in dev with an invalid gameID', async () => {
 
   // THEN
   expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
-  expect(mock.user.sendMessage).toBeCalledWith('Game 4713 not found - check the number is correct')
+  expect(mock.user.sendMessage).toBeCalledWith('Game 4713 not found 😕 - check the game id is correct')
 })
 
 it('handles the version command when known', async () => {
