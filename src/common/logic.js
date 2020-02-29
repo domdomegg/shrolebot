@@ -87,7 +87,7 @@ function handleJoin (user, msg) {
         user.sendMessage(`Joined ${game.owner.firstName}'s game ${game.gameID} 🎉`)
         game.owner.sendMessage(`${user.firstName} joined game ${game.gameID}`)
         if (game.players.length === 5) {
-          game.owner.sendMessage(`You can now start it with 'start ${game.gameID}' ✨`)
+          game.owner.sendMessage(`You can now start it with 'start ${game.gameID}' ✨`, [`start ${game.gameID}`])
         }
       })
     })
@@ -128,7 +128,7 @@ function handleLeave (user, msg) {
       }
 
       if (err.code === 'CannotRemoveGameOwner') {
-        user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`)
+        user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`, ['create'])
         return
       }
 
@@ -148,7 +148,7 @@ function handleStart (user, msg) {
     .then(game => {
       if (!user.equals(game.owner)) {
         game.owner.getFirstNamePromise().then(firstName => {
-          user.sendMessage(`Only ${firstName}, who created the game, can start it.`)
+          user.sendMessage(`Only ${firstName}, who created the game, can start it.`, [`players ${gameID}`])
         })
         return
       }
@@ -173,7 +173,7 @@ function handleStart (user, msg) {
       Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
         if (fascists.length === 1) {
           hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].firstName}. 😈`)
-          fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}. 😈 `)
+          fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}. 😈`)
         } else {
           hitler.sendMessage('You are Hitler! 😈')
 
@@ -286,7 +286,7 @@ function handleHelp (user, msg) {
   }
 
   if (msg.includes('version')) {
-    user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.')
+    user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.', ['version'])
     sentMessage = true
   }
 
@@ -297,14 +297,17 @@ function handleHelp (user, msg) {
 
   if (msg.includes('list')) {
     user.sendMessage(
-      '📜 All supported commands:\ncreate\njoin <game id>\nleave <game id>\nstart <game id>\nplayers <game id>\nhelp\nhelp <command>\nversion' +
-      (process.env.STAGE === 'dev' ? '\ndatabase <game id>' : '')
+      '📜 All supported commands:\ncreate\njoin <game id>\nleave <game id>\nstart <game id>\nplayers <game id>\nhelp\nhelp <command>\nversion' + (process.env.STAGE === 'dev' ? '\ndatabase <game id>' : ''),
+      ['help create', 'help join', 'help start']
     )
     sentMessage = true
   }
 
   if (!sentMessage) {
-    user.sendMessage('Quick guide:\n1️⃣ Someone creates a game with \'create\' and gets a game id.\n2️⃣ Other players join with \'join <game id>\' (e.g. \'join 1234\')\n3️⃣ The creator starts it with \'start <game id>\' (eg. \'start 1234\')\n\nFor more details run \'help list\' or \'help <command>\'')
+    user.sendMessage(
+      'Quick guide:\n1️⃣ Someone creates a game with \'create\' and gets a game id.\n2️⃣ Other players join with \'join <game id>\' (e.g. \'join 1234\')\n3️⃣ The creator starts it with \'start <game id>\' (eg. \'start 1234\')\n\nFor more details run \'help list\' or \'help <command>\'',
+      ['create', 'help list', 'help create']
+    )
   }
 }
 
@@ -313,5 +316,5 @@ function handleVersion (user, msg) {
 }
 
 function handleUnrecognized (user, msg) {
-  return user.sendMessage('I didn\'t understand that 😕 - try \'help\' if you\'re lost')
+  return user.sendMessage('I didn\'t understand that 😕 - try \'help\' if you\'re lost', ['help', 'help list'])
 }

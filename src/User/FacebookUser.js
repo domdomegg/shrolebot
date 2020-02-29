@@ -17,10 +17,15 @@ class FacebookUser extends AbstractUser {
   }
 
   // Sends response messages via the Send API
-  sendMessage (msg) {
+  sendMessage (msg, suggestions = []) {
     const requestBody = {
       recipient: { id: this.networkScopedId },
       message: { text: msg }
+    }
+
+    if (suggestions.length) {
+      requestBody.message.quick_replies = suggestions
+        .map(str => ({ content_type: 'text', title: str, payload: str }))
     }
 
     // Send the HTTP request to the Messenger Platform
