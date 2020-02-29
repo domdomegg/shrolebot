@@ -4,9 +4,8 @@
   "description": "A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform.",
   "dependencies": {
     "aws-sdk": "^2.551.0",
-    "node-telegram-bot-api": "^0.30.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.7"
+    "axios": "^0.19.2",
+    "node-telegram-bot-api": "^0.30.0"
   },
   "devDependencies": {
     "@shelf/jest-dynamodb": "^1.4.1",
@@ -35,7 +34,6 @@
   "jest": {
     "preset": "@shelf/jest-dynamodb",
     "setupFiles": [
-      "./test/fixRequestJest.js",
       "./test/environmentVariables.js"
     ]
   },

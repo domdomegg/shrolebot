@@ -1,17 +1,16 @@
 'use strict'
 
-const request = require('request-promise-native')
+const axios = require('axios').default
 const AbstractUser = require('./AbstractUser')
 
 class FacebookUser extends AbstractUser {
   async getFirstNamePromise () {
     if (this.firstName == null) {
-      const data = await request({
-        uri: `https://graph.facebook.com/${this.networkScopedId}?fields=first_name&access_token=${process.env.FB_PAGE_ACCESS_TOKEN}`,
+      const res = await axios({
         method: 'GET',
-        json: true
+        url: `https://graph.facebook.com/${this.networkScopedId}?fields=first_name&access_token=${process.env.FB_PAGE_ACCESS_TOKEN}`
       })
-      this.firstName = data.first_name
+      this.firstName = res.data.first_name
     }
     return this.firstName
   }
@@ -29,11 +28,11 @@ class FacebookUser extends AbstractUser {
     }
 
     // Send the HTTP request to the Messenger Platform
-    return request({
-      uri: 'https://graph.facebook.com/v2.6/me/messages',
-      qs: { access_token: process.env.FB_PAGE_ACCESS_TOKEN },
+    return axios({
       method: 'POST',
-      json: requestBody
+      url: 'https://graph.facebook.com/v2.6/me/messages',
+      params: { access_token: process.env.FB_PAGE_ACCESS_TOKEN },
+      data: requestBody
     })
       .then(() => { console.log('Message sent' + (msg ? ': ' + msg : '')) })
       .catch(err => { console.error('Unable to send message:' + err) })
