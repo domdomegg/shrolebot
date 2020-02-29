@@ -1,9 +1,6 @@
 'use strict'
 
-process.env.NTBA_FIX_319 = 1
-const TelegramBot = require('node-telegram-bot-api')
-const telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_ACCESS_TOKEN, { polling: false })
-
+const axios = require('axios').default
 const AbstractUser = require('./AbstractUser')
 
 class TelegramUser extends AbstractUser {
@@ -12,15 +9,25 @@ class TelegramUser extends AbstractUser {
   }
 
   sendMessage (msg, suggestions = []) {
-    const options = {}
+    const requestBody = {
+      chat_id: this.networkScopedId,
+      text: msg
+    }
+
     if (suggestions.length) {
-      options.reply_markup = {
+      requestBody.reply_markup = {
         keyboard: suggestions.map(str => [{ text: str }]),
         one_time_keyboard: true
       }
     }
 
-    return telegramBot.sendMessage(this.networkScopedId, msg, options)
+    return axios({
+      method: 'POST',
+      url: `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_ACCESS_TOKEN}/sendMessage`,
+      data: requestBody
+    })
+      .then(() => { console.log('Message sent' + (msg ? ': ' + msg : '')) })
+      .catch(err => { console.error('Unable to send message:' + err) })
   }
 }
 
