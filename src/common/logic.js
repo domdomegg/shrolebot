@@ -261,7 +261,7 @@ function handleHelp (user, msg) {
   let sentMessage = false
 
   if (msg.includes('create')) {
-    user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.')
+    user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.', ['create'])
     sentMessage = true
   }
 
