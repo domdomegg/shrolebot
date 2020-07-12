@@ -5,7 +5,7 @@
 A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform. ⚡
 
 - Integrates with [Facebook Messenger](https://m.me/shrolebot) ([dev](https://m.me/shroledevbot)) and [Telegram](https://t.me/shrolebot) ([dev](https://t.me/shroledevbot)). 🔌
-- Uses AWS Lambda, DynamoDB and CloudFormation to be performant, scalable, and student budget friendly! 💸
+- Uses AWS Lambda, DynamoDB and CloudFormation to be performant, scalable, and budget friendly! 💸
 - Automated releases and deployments to separate dev and prod environments. 🚧
 
 ## ✨ Demo
