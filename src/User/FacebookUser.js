@@ -38,8 +38,9 @@ class FacebookUser extends AbstractUser {
       .catch(err => {
         if (err && err.isAxiosError) {
           console.error('Unable to send message: ' + msg + ' as got error ' + err, err.response && err.response.data)
+        } else {
+          console.error('Unable to send message: ' + msg + ' as got error ' + err)
         }
-        console.error('Unable to send message: ' + msg + ' as got error ' + err)
       })
   }
 }
