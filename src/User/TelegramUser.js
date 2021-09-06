@@ -27,7 +27,12 @@ class TelegramUser extends AbstractUser {
       data: requestBody
     })
       .then(() => { console.log('Message sent' + (msg ? ': ' + msg : '')) })
-      .catch(err => { console.error('Unable to send message:' + err) })
+      .catch(err => {
+        if (err && err.isAxiosError) {
+          console.error('Unable to send message: ' + msg + ' as got error ' + err, err.response && err.response.data)
+        }
+        console.error('Unable to send message: ' + msg + ' as got error ' + err)
+      })
   }
 }
 
