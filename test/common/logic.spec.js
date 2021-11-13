@@ -94,3 +94,12 @@ it('handles the version command when UNKNOWN', async () => {
   expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
   expect(mock.user.sendMessage).toBeCalledWith('Version UNKNOWN')
 })
+
+it('handles invalid join command', async () => {
+  // WHEN
+  await logic.handleMessage(mock.user, 'join invalid')
+
+  // THEN
+  expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
+  expect(mock.user.sendMessage).toBeCalledWith('Game "invalid" not found 😕 - check the game id is correct (it should be a 4 digit number like "1234")')
+})

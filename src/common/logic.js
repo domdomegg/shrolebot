@@ -27,7 +27,12 @@ function handleDatabase (user, msg) {
     return user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`)
   }
 
-  const gameID = parseInt(msg.slice(9, 13))
+  const [gameID, err] = extractGameId(msg, 'database')
+  if (err) {
+    user.sendMessage(err)
+    return
+  }
+
   return gameStore.getByGameID(gameID)
     .then(game =>
       user.sendMessage(JSON.stringify(game, null, '\t'))
@@ -48,7 +53,7 @@ function handleCreate (user, msg) {
       return Promise.all(games.map(game => {
         if (game.gameID === 9999) {
           user.sendMessage(`Not cancelling test game ${game.gameID}`)
-          return
+          return Promise.resolve()
         }
 
         return gameStore.deleteGame(game.gameID)
@@ -79,7 +84,11 @@ function handleCreate (user, msg) {
 }
 
 function handleJoin (user, msg) {
-  const gameID = parseInt(msg.slice(5, 9))
+  const [gameID, err] = extractGameId(msg, 'join')
+  if (err) {
+    user.sendMessage(err)
+    return
+  }
 
   gameStore.addUserToGame(user, gameID)
     .then(game => {
@@ -93,12 +102,12 @@ function handleJoin (user, msg) {
     })
     .catch(err => {
       if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+        user.sendMessage(`Game "${gameID}" not found 😕 - check the game id is correct`)
         return
       }
 
       console.error(err)
-      user.sendMessage('An unknown error occured (1) - please tell Adam if you see this!')
+      user.sendMessage('An unknown error occured (1) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
     })
 }
 
@@ -143,7 +152,12 @@ function handleLeave (user, msg) {
 }
 
 function handleStart (user, msg) {
-  const gameID = parseInt(msg.slice(6, 10))
+  const [gameID, err] = extractGameId(msg, 'start')
+  if (err) {
+    user.sendMessage(err)
+    return
+  }
+
   gameStore.getByGameID(gameID)
     .then(game => {
       if (!user.equals(game.owner)) {
@@ -206,7 +220,7 @@ function handleStart (user, msg) {
       }
 
       console.error(err)
-      user.sendMessage('An unknown error occured (3) - please tell Adam if you see this!')
+      user.sendMessage('An unknown error occured (3) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
     })
 }
 
@@ -239,7 +253,12 @@ function shuffle (arr) {
 }
 
 function handlePlayers (user, msg) {
-  const gameID = parseInt(msg.slice(8, 12))
+  const [gameID, err] = extractGameId(msg, 'players')
+  if (err) {
+    user.sendMessage(err)
+    return
+  }
+
   gameStore.getByGameID(gameID)
     .then(game => {
       Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
@@ -317,4 +336,25 @@ function handleVersion (user, msg) {
 
 function handleUnrecognized (user, msg) {
   return user.sendMessage('I didn\'t understand that 😕 - try \'help\' if you\'re lost', ['help', 'help list'])
+}
+
+function extractGameId (msg, command) {
+  const index = command.length + 1
+
+  if (msg.length <= index) {
+    return [undefined, `You must supply a game id, for example "${command} 1234"`]
+  }
+  if (msg.length !== index + 4) {
+    return [undefined, `Game "${msg.slice(index)}" not found 😕 - check the game id is correct (it should be a 4 digit number like "1234")`]
+  }
+  const gameIDstr = msg.slice(index, index + 4)
+  if (!/^\d{4}$/.test(gameIDstr)) {
+    return [undefined, `Game "${msg.slice(index)}" not found 😕 - check the game id is correct (it should be a 4 digit number like "1234")`]
+  }
+  const gameID = parseInt(gameIDstr)
+  if (isNaN(gameID)) {
+    return [undefined, `Game "${msg.slice(index)}" not found 😕 - check the game id is correct (it should be a 4 digit number like "1234")`]
+  }
+
+  return [gameID, undefined]
 }

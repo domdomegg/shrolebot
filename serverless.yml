@@ -1,23 +1,32 @@
 service: secret-hitler-role-bot
 
+# https://www.serverless.com/framework/docs/deprecations/#new-variables-resolver
+variablesResolutionMode: 20210326
+
+
+
 provider:
   name: aws
   runtime: nodejs10.x
   stage: ${opt:stage, 'dev'}
   apiName: ${self:service}-api
+  region: ${self:custom.env-default.REGION, self:custom.env-stage.REGION}
+  role: ${self:custom.env-default.LAMBDA_ROLE_ARN, self:custom.env-stage.LAMBDA_ROLE_ARN}
+  logRetentionInDays: 90
+  # https://www.serverless.com/framework/docs/deprecations/#default-providerlambdahashingversion
+  lambdaHashingVersion: 20201221
+  environment:
+    FB_PAGE_ACCESS_TOKEN: ${self:custom.env-default.FB_PAGE_ACCESS_TOKEN, self:custom.env-stage.FB_PAGE_ACCESS_TOKEN}
+    TELEGRAM_BOT_ACCESS_TOKEN: ${self:custom.env-default.TELEGRAM_BOT_ACCESS_TOKEN, self:custom.env-stage.TELEGRAM_BOT_ACCESS_TOKEN}
+    TABLE_NAME: ${self:custom.tableName}
+    VERIFY_TOKEN: ${self:custom.env-default.VERIFY_TOKEN, self:custom.env-stage.VERIFY_TOKEN}
+    STAGE: ${self:provider.stage}
+    VERSION: ${file(version.js):VERSION, 'UNKNOWN'}
+
+custom:
   tableName: ${self:service}-${self:provider.stage}-games
   env-stage: ${file(env.yml):${self:provider.stage}}
   env-default: ${file(env.yml):default}
-  region: ${self:provider.env-default.REGION, self:provider.env-stage.REGION}
-  role: ${self:provider.env-default.LAMBDA_ROLE_ARN, self:provider.env-stage.LAMBDA_ROLE_ARN}
-  logRetentionInDays: 90
-  environment:
-    FB_PAGE_ACCESS_TOKEN: ${self:provider.env-default.FB_PAGE_ACCESS_TOKEN, self:provider.env-stage.FB_PAGE_ACCESS_TOKEN}
-    TELEGRAM_BOT_ACCESS_TOKEN: ${self:provider.env-default.TELEGRAM_BOT_ACCESS_TOKEN, self:provider.env-stage.TELEGRAM_BOT_ACCESS_TOKEN}
-    TABLE_NAME: ${self:provider.tableName}
-    VERIFY_TOKEN: ${self:provider.env-default.VERIFY_TOKEN, self:provider.env-stage.VERIFY_TOKEN}
-    STAGE: ${self:provider.stage}
-    VERSION: ${file(version.js):VERSION, 'UNKNOWN'}
 
 functions:
   fb:
@@ -69,7 +78,7 @@ resources:
             Projection:
               ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
-        TableName: ${self:provider.tableName}
+        TableName: ${self:custom.tableName}
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true

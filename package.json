@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "A chatbot that allows users to allocate roles for the board game Secret Hitler, using the AWS serverless platform.",
   "dependencies": {
-    "aws-sdk": "^2.551.0",
-    "axios": "^0.21.1"
+    "aws-sdk": "^2.1028.0",
+    "axios": "^0.24.0"
   },
   "devDependencies": {
-    "@shelf/jest-dynamodb": "^1.4.1",
-    "jest": "^24.9.0",
-    "serverless": "^1.67.0",
-    "standard": "^14.3.1"
+    "@shelf/jest-dynamodb": "^1.8.0",
+    "jest": "^27.3.1",
+    "serverless": "^2.66.1",
+    "standard": "^16.0.4"
   },
   "scripts": {
     "lint": "standard",
@@ -19,6 +19,8 @@
     "test:watch": "jest test --watch",
     "deploy:dev": "serverless deploy --stage dev --verbose",
     "deploy:prod": "serverless deploy --stage prod --verbose",
+    "logs:dev": "serverless logs --stage dev -t",
+    "logs:prod": "serverless logs --stage prod -t",
     "teardown:dev": "serverless remove --stage dev --verbose",
     "teardown:prod": "serverless remove --stage prod --verbose"
   },
