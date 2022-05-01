@@ -3,11 +3,9 @@ service: secret-hitler-role-bot
 # https://www.serverless.com/framework/docs/deprecations/#new-variables-resolver
 variablesResolutionMode: 20210326
 
-
-
 provider:
   name: aws
-  runtime: nodejs10.x
+  runtime: nodejs14.x
   stage: ${opt:stage, 'dev'}
   apiName: ${self:service}-api
   region: ${self:custom.env-default.REGION, self:custom.env-stage.REGION}
@@ -54,26 +52,21 @@ package:
 resources:
   Resources:
     GamesTable:
-      Type: 'AWS::DynamoDB::Table'
+      Type: "AWS::DynamoDB::Table"
       DeletionPolicy: Delete
       Properties:
         AttributeDefinitions:
-          -
-            AttributeName: gameID
-            AttributeType: 'N' # Number
-          -
-            AttributeName: gameOwner
-            AttributeType: 'S' # String
+          - AttributeName: gameID
+            AttributeType: "N" # Number
+          - AttributeName: gameOwner
+            AttributeType: "S" # String
         KeySchema:
-          -
-            AttributeName: gameID
+          - AttributeName: gameID
             KeyType: HASH
         GlobalSecondaryIndexes:
-          - 
-            IndexName: gameOwnerGSI
+          - IndexName: gameOwnerGSI
             KeySchema:
-              -
-                AttributeName: gameOwner
+              - AttributeName: gameOwner
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
