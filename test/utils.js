@@ -21,6 +21,10 @@ module.exports = {
       endpoint: 'localhost:8000',
       sslEnabled: false,
       region: 'local-env',
+      credentials: {
+        accessKeyId: 'fakeMyKeyId',
+        secretAccessKey: 'fakeSecretAccessKey'
+      },
       params: {
         TableName: process.env.TABLE_NAME
       }

@@ -2,7 +2,15 @@
 
 const { DocumentClient } = require('aws-sdk/clients/dynamodb')
 const dynamoDB = new DocumentClient({
-  ...(process.env.JEST_WORKER_ID && { endpoint: 'localhost:8000', sslEnabled: false, region: 'local-env' }),
+  ...(process.env.JEST_WORKER_ID && {
+    endpoint: 'localhost:8000',
+    sslEnabled: false,
+    region: 'local-env',
+    credentials: {
+      accessKeyId: 'fakeMyKeyId',
+      secretAccessKey: 'fakeSecretAccessKey'
+    }
+  }),
   params: {
     TableName: process.env.TABLE_NAME
   }
@@ -15,7 +23,7 @@ class GameStore {
   getByGameID (gameID) {
     const params = {
       Key: {
-        gameID: gameID
+        gameID
       }
     }
 
@@ -37,7 +45,7 @@ class GameStore {
     const gameID = generateGameID()
     const putParams = {
       Item: {
-        gameID: gameID,
+        gameID,
         gameOwner: user.toString(),
         players: dynamoDB.createSet([user.toString()]),
         ttl: getTTL()
@@ -52,7 +60,7 @@ class GameStore {
   deleteGame (gameID) {
     const deleteParams = {
       Key: {
-        gameID: gameID
+        gameID
       },
       ReturnValues: 'ALL_OLD'
     }
@@ -65,7 +73,7 @@ class GameStore {
   updateTTL (gameID) {
     const TTLparams = {
       Key: {
-        gameID: gameID
+        gameID
       },
       AttributeUpdates: {
         ttl: {
@@ -81,7 +89,7 @@ class GameStore {
   addUserToGame (user, gameID) {
     const params = {
       Key: {
-        gameID: gameID
+        gameID
       },
       UpdateExpression: 'ADD players :user',
       ExpressionAttributeValues: {
@@ -109,7 +117,7 @@ class GameStore {
   removeUserFromGame (user, gameID) {
     const params = {
       Key: {
-        gameID: gameID
+        gameID
       },
       UpdateExpression: 'DELETE players :userSet',
       ExpressionAttributeValues: {
