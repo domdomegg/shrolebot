@@ -9,7 +9,7 @@
   "devDependencies": {
     "@shelf/jest-dynamodb": "^2.2.3",
     "jest": "^28.0.3",
-    "serverless": "^3.16.0",
+    "serverless": "^3.40.0",
     "standard": "^17.0.0"
   },
   "scripts": {
