@@ -3,6 +3,11 @@
 const DynamoDBGameStore = require('../GameStore/DynamoDBGameStore.js')
 const gameStore = new DynamoDBGameStore()
 
+// Every handler must await ALL its sends before resolving: the Lambda
+// runtime freezes the container as soon as the async handler returns, so a
+// fire-and-forget sendMessage only completes (if ever) when a later
+// invocation thaws the container.
+
 exports.handleMessage = (user, msg) => {
   msg = msg.toLowerCase()
 
@@ -21,7 +26,7 @@ exports.handleNoMessage = (user) => {
   return user.sendMessage('Something went wrong getting the message to me. Please tell Adam if you see this error.')
 }
 
-function handleDatabase (user, msg) {
+async function handleDatabase (user, msg) {
   if (process.env.STAGE !== 'dev') {
     console.warn(`${user} tried command '${msg}' in stage '${process.env.STAGE}'`)
     return user.sendMessage(`Cannot get database entry while in stage ${process.env.STAGE}`)
@@ -29,199 +34,169 @@ function handleDatabase (user, msg) {
 
   const [gameID, err] = extractGameId(msg, 'database')
   if (err) {
-    user.sendMessage(err)
-    return
+    return user.sendMessage(err)
   }
 
-  return gameStore.getByGameID(gameID)
-    .then(game =>
-      user.sendMessage(JSON.stringify(game, null, '\t'))
-    )
-    .catch(err => {
-      if (err.code === 'GameNotFound') {
-        return user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
-      }
+  try {
+    const game = await gameStore.getByGameID(gameID)
+    await user.sendMessage(JSON.stringify(game, null, '\t'))
+  } catch (err) {
+    if (err.code === 'GameNotFound') {
+      return user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+    }
 
-      console.error(err)
-      return user.sendMessage('Unknown error retrieving database')
-    })
+    console.error(err)
+    await user.sendMessage('Unknown error retrieving database')
+  }
 }
 
-function handleCreate (user, msg) {
-  gameStore.getGamesOwnedBy(user)
-    .then(games => {
-      return Promise.all(games.map(game => {
+async function handleCreate (user, msg) {
+  try {
+    try {
+      const games = await gameStore.getGamesOwnedBy(user)
+      await Promise.all(games.map(async (game) => {
         if (game.gameID === 9999) {
-          user.sendMessage(`Not cancelling test game ${game.gameID}`)
-          return Promise.resolve()
+          return user.sendMessage(`Not cancelling test game ${game.gameID}`)
         }
 
-        return gameStore.deleteGame(game.gameID)
-          .then(game => {
-            user.sendMessage(`Cancelled previous game ${game.gameID}`)
-
-            game.players.forEach(player => {
-              if (player.equals(user)) return
-              player.sendMessage(`The host cancelled game ${game.gameID}`)
-            })
-          })
+        const deletedGame = await gameStore.deleteGame(game.gameID)
+        await user.sendMessage(`Cancelled previous game ${deletedGame.gameID}`)
+        await Promise.all(deletedGame.players
+          .filter((player) => !player.equals(user))
+          .map((player) => player.sendMessage(`The host cancelled game ${deletedGame.gameID}`)))
       }))
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err)
-      user.sendMessage('Failed to cancel old games, but continuing anyways.')
-    })
-    .then(() => {
-      return gameStore.createGameWithOwner(user)
-    })
-    .then(gameID => {
-      user.sendMessage(`Created game ${gameID} 🎉 - tell your friends to join with 'join ${gameID}'`)
-    })
-    .catch(err => {
-      console.error(err)
-      user.sendMessage('Error creating game, please try again.')
-    })
+      await user.sendMessage('Failed to cancel old games, but continuing anyways.')
+    }
+
+    const gameID = await gameStore.createGameWithOwner(user)
+    await user.sendMessage(`Created game ${gameID} 🎉 - tell your friends to join with 'join ${gameID}'`)
+  } catch (err) {
+    console.error(err)
+    await user.sendMessage('Error creating game, please try again.')
+  }
 }
 
-function handleJoin (user, msg) {
+async function handleJoin (user, msg) {
   const [gameID, err] = extractGameId(msg, 'join')
   if (err) {
-    user.sendMessage(err)
-    return
+    return user.sendMessage(err)
   }
 
-  gameStore.addUserToGame(user, gameID)
-    .then(game => {
-      Promise.all([user.getFirstNamePromise(), game.owner.getFirstNamePromise()]).then(_ => {
-        user.sendMessage(`Joined ${game.owner.firstName}'s game ${game.gameID} 🎉`)
-        game.owner.sendMessage(`${user.firstName} joined game ${game.gameID}`)
-        if (game.players.length === 5) {
-          game.owner.sendMessage(`You can now start it with 'start ${game.gameID}' ✨`, [`start ${game.gameID}`])
-        }
-      })
-    })
-    .catch(err => {
-      if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game "${gameID}" not found 😕 - check the game id is correct`)
-        return
-      }
+  try {
+    const game = await gameStore.addUserToGame(user, gameID)
+    await Promise.all([user.getFirstNamePromise(), game.owner.getFirstNamePromise()])
+    await user.sendMessage(`Joined ${game.owner.firstName}'s game ${game.gameID} 🎉`)
+    await game.owner.sendMessage(`${user.firstName} joined game ${game.gameID}`)
+    if (game.players.length === 5) {
+      await game.owner.sendMessage(`You can now start it with 'start ${game.gameID}' ✨`, [`start ${game.gameID}`])
+    }
+  } catch (err) {
+    if (err.code === 'GameNotFound') {
+      return user.sendMessage(`Game "${gameID}" not found 😕 - check the game id is correct`)
+    }
 
-      console.error(err)
-      user.sendMessage('An unknown error occured (1) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
-    })
+    console.error(err)
+    await user.sendMessage('An unknown error occured (1) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
+  }
 }
 
-function handleLeave (user, msg) {
+async function handleLeave (user, msg) {
   const gameID = parseInt(msg.slice(6, 10))
-  gameStore.removeUserFromGame(user, gameID)
-    .then(game => {
-      if (!game) return
 
-      user.sendMessage(`You've left game ${game.gameID}`)
-      user.getFirstNamePromise()
-        .then(_ => {
-          game.players.forEach(player => {
-            player.sendMessage(`${user.firstName} left game ${game.gameID}`)
-          })
-        })
-    })
-    .catch(err => {
-      if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
-        return
-      }
+  try {
+    const game = await gameStore.removeUserFromGame(user, gameID)
+    if (!game) return
 
-      if (err.code === 'NotInGame') {
-        user.sendMessage(`You are not in game ${gameID}`)
-        return
-      }
+    await user.sendMessage(`You've left game ${game.gameID}`)
+    await user.getFirstNamePromise()
+    await Promise.all(game.players.map((player) => player.sendMessage(`${user.firstName} left game ${game.gameID}`)))
+  } catch (err) {
+    if (err.code === 'GameNotFound') {
+      return user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+    }
 
-      if (err.code === 'CannotRemoveGameOwner') {
-        user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`, ['create'])
-        return
-      }
+    if (err.code === 'NotInGame') {
+      return user.sendMessage(`You are not in game ${gameID}`)
+    }
 
-      if (err.code === 'GameNotFound|PlayerNotInGame|CannotRemoveGameOwner') {
-        user.sendMessage(`Game ${gameID} not found, or you are not in game ${gameID}, or you are the creator so cannot leave.`)
-        return
-      }
+    if (err.code === 'CannotRemoveGameOwner') {
+      return user.sendMessage(`You are the creator of game ${gameID}, so you cannot leave. You might want to create a new game instead.`, ['create'])
+    }
 
-      console.error(err)
-      user.sendMessage('Unknown error retrieving database')
-    })
+    if (err.code === 'GameNotFound|PlayerNotInGame|CannotRemoveGameOwner') {
+      return user.sendMessage(`Game ${gameID} not found, or you are not in game ${gameID}, or you are the creator so cannot leave.`)
+    }
+
+    console.error(err)
+    await user.sendMessage('Unknown error retrieving database')
+  }
 }
 
-function handleStart (user, msg) {
+async function handleStart (user, msg) {
   const [gameID, err] = extractGameId(msg, 'start')
   if (err) {
-    user.sendMessage(err)
-    return
+    return user.sendMessage(err)
   }
 
-  gameStore.getByGameID(gameID)
-    .then(game => {
-      if (!user.equals(game.owner)) {
-        game.owner.getFirstNamePromise().then(firstName => {
-          user.sendMessage(`Only ${firstName}, who created the game, can start it.`, [`players ${gameID}`])
-        })
-        return
-      }
+  try {
+    const game = await gameStore.getByGameID(gameID)
 
-      if (game.players.length < 5) {
-        user.sendMessage(`At least 5 players are needed to start a game - currently there ${game.players.length === 1 ? 'is' : 'are'} only ${game.players.length} 😞`)
-        return
-      }
-      if (game.players.length > 10) {
-        user.sendMessage(`A maximum of 10 people can play a game - currently there are ${game.players.length} 😮`)
-        return
-      }
+    if (!user.equals(game.owner)) {
+      const firstName = await game.owner.getFirstNamePromise()
+      return await user.sendMessage(`Only ${firstName}, who created the game, can start it.`, [`players ${gameID}`])
+    }
 
-      user.sendMessage(`Game starting with ${game.players.length} players 🎲`)
+    if (game.players.length < 5) {
+      return await user.sendMessage(`At least 5 players are needed to start a game - currently there ${game.players.length === 1 ? 'is' : 'are'} only ${game.players.length} 😞`)
+    }
+    if (game.players.length > 10) {
+      return await user.sendMessage(`A maximum of 10 people can play a game - currently there are ${game.players.length} 😮`)
+    }
 
-      gameStore.updateTTL(gameID)
+    await user.sendMessage(`Game starting with ${game.players.length} players 🎲`)
 
-      // Get people's roles
-      const [hitler, fascists, liberals] = calcPlayerRoles(game.players)
+    await gameStore.updateTTL(gameID)
 
-      // Get people's names
-      Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
-        if (fascists.length === 1) {
-          hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].firstName}. 😈`)
-          fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}. 😈`)
+    // Get people's roles
+    const [hitler, fascists, liberals] = calcPlayerRoles(game.players)
+
+    // Get people's names
+    await Promise.all(game.players.map((p) => p.getFirstNamePromise()))
+
+    if (fascists.length === 1) {
+      await hitler.sendMessage(`You are Hitler! The other fascist is ${fascists[0].firstName}. 😈`)
+      await fascists[0].sendMessage(`You are fascist! Hitler is ${hitler.firstName}. 😈`)
+    } else {
+      await hitler.sendMessage('You are Hitler! 😈')
+
+      for (const fascistPlayer of fascists) {
+        const otherFascists = fascists.filter(f => f !== fascistPlayer)
+        if (otherFascists.length === 1) {
+          await fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascist is ${otherFascists[0].firstName}. 😈`)
         } else {
-          hitler.sendMessage('You are Hitler! 😈')
-
-          fascists.forEach(fascistPlayer => {
-            const otherFascists = fascists.filter(f => f !== fascistPlayer)
-            if (otherFascists.length === 1) {
-              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascist is ${otherFascists[0].firstName}. 😈`)
-            } else {
-              fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascists are ${otherFascists.map(f => f.firstName).join(' and ')}. 😈`)
-            }
-          })
+          await fascistPlayer.sendMessage(`You are fascist! Hitler is ${hitler.firstName} and the other fascists are ${otherFascists.map(f => f.firstName).join(' and ')}. 😈`)
         }
-
-        hitler.sendMessage('You can show your group membership at https://goo.gl/dvwKVp')
-        fascists.forEach(player => {
-          player.sendMessage('You can show your group membership at https://goo.gl/dvwKVp')
-        })
-
-        liberals.forEach(player => {
-          player.sendMessage('You are liberal! 😇')
-          player.sendMessage('You can show your group membership at https://goo.gl/x1hekt')
-        })
-      })
-    })
-    .catch(err => {
-      if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
-        user.sendMessage('Games time out after 24 hours, so you might need to create a new one ⌛')
-        return
       }
+    }
 
-      console.error(err)
-      user.sendMessage('An unknown error occured (3) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
-    })
+    await hitler.sendMessage('You can show your group membership at https://goo.gl/dvwKVp')
+    await Promise.all(fascists.map((player) => player.sendMessage('You can show your group membership at https://goo.gl/dvwKVp')))
+
+    await Promise.all(liberals.map(async (player) => {
+      await player.sendMessage('You are liberal! 😇')
+      await player.sendMessage('You can show your group membership at https://goo.gl/x1hekt')
+    }))
+  } catch (err) {
+    if (err.code === 'GameNotFound') {
+      await user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+      return user.sendMessage('Games time out after 24 hours, so you might need to create a new one ⌛')
+    }
+
+    console.error(err)
+    await user.sendMessage('An unknown error occured (3) - please report this at https://github.com/domdomegg/shrolebot/issues/new')
+  }
 }
 
 function calcPlayerRoles (players) {
@@ -252,70 +227,66 @@ function shuffle (arr) {
   }
 }
 
-function handlePlayers (user, msg) {
+async function handlePlayers (user, msg) {
   const [gameID, err] = extractGameId(msg, 'players')
   if (err) {
-    user.sendMessage(err)
-    return
+    return user.sendMessage(err)
   }
 
-  gameStore.getByGameID(gameID)
-    .then(game => {
-      Promise.all(game.players.map(p => p.getFirstNamePromise())).then(_ => {
-        user.sendMessage(`There ${game.players.length === 1 ? 'is 1 player' : `are ${game.players.length} players`} in game ${game.gameID}:\n${game.players.map(p => p.firstName + (p.equals(game.owner) ? ' (👑 creator)' : '')).sort().join('\n')}`)
-      })
-    })
-    .catch(err => {
-      if (err.code === 'GameNotFound') {
-        user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
-        return
-      }
+  try {
+    const game = await gameStore.getByGameID(gameID)
+    await Promise.all(game.players.map(p => p.getFirstNamePromise()))
+    await user.sendMessage(`There ${game.players.length === 1 ? 'is 1 player' : `are ${game.players.length} players`} in game ${game.gameID}:\n${game.players.map(p => p.firstName + (p.equals(game.owner) ? ' (👑 creator)' : '')).sort().join('\n')}`)
+  } catch (err) {
+    if (err.code === 'GameNotFound') {
+      return user.sendMessage(`Game ${gameID} not found 😕 - check the game id is correct`)
+    }
 
-      console.error(err)
-      user.sendMessage('Unknown error retrieving database')
-    })
+    console.error(err)
+    await user.sendMessage('Unknown error retrieving database')
+  }
 }
 
-function handleHelp (user, msg) {
+async function handleHelp (user, msg) {
   let sentMessage = false
 
   if (msg.includes('create')) {
-    user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.', ['create'])
+    await user.sendMessage('🆕 \'create\' starts a new game. You\'ll be given a game id to share with your friends, who can join with \'join <game id>\'. Creating a new game will cancel any previous games you were the owner of.', ['create'])
     sentMessage = true
   }
 
   if (msg.includes('join')) {
-    user.sendMessage('🙌 \'join <game id>\' (for example \'join 1234\') joins an existing game. The game creator will have been told the game id when they created it with \'create\'.')
+    await user.sendMessage('🙌 \'join <game id>\' (for example \'join 1234\') joins an existing game. The game creator will have been told the game id when they created it with \'create\'.')
     sentMessage = true
   }
 
   if (msg.includes('leave')) {
-    user.sendMessage('😢 \'leave <game id>\' (for example \'leave 1234\') leaves an existing game you previously joined.')
+    await user.sendMessage('😢 \'leave <game id>\' (for example \'leave 1234\') leaves an existing game you previously joined.')
     sentMessage = true
   }
 
   if (msg.includes('start')) {
-    user.sendMessage('🎲 \'start <game id>\' (for example \'start 1234\') starts an existing game you\'re the creator of. This will allocate everyone roles, and can be called as many times as you want, allocating each player a random role each time.')
+    await user.sendMessage('🎲 \'start <game id>\' (for example \'start 1234\') starts an existing game you\'re the creator of. This will allocate everyone roles, and can be called as many times as you want, allocating each player a random role each time.')
     sentMessage = true
   }
 
   if (msg.includes('players')) {
-    user.sendMessage('🧑‍🤝‍🧑 \'players <game id>\' (for example \'players 1234\') lists all the players who have joined the specified game, and identifies the creator.')
+    await user.sendMessage('🧑‍🤝‍🧑 \'players <game id>\' (for example \'players 1234\') lists all the players who have joined the specified game, and identifies the creator.')
     sentMessage = true
   }
 
   if (msg.includes('version')) {
-    user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.', ['version'])
+    await user.sendMessage('#️⃣ \'version\' returns the current version of the software you\'re talking too. You\'ll probably only need this if you\'re reporting a problem.', ['version'])
     sentMessage = true
   }
 
   if (msg.includes('database')) {
-    user.sendMessage('🕵 \'database <game id>\' (for example \'database 1234\') returns the information in the database for that game. Only available in dev.')
+    await user.sendMessage('🕵 \'database <game id>\' (for example \'database 1234\') returns the information in the database for that game. Only available in dev.')
     sentMessage = true
   }
 
   if (msg.includes('list')) {
-    user.sendMessage(
+    await user.sendMessage(
       '📜 All supported commands:\ncreate\njoin <game id>\nleave <game id>\nstart <game id>\nplayers <game id>\nhelp\nhelp <command>\nversion' + (process.env.STAGE === 'dev' ? '\ndatabase <game id>' : ''),
       ['help create', 'help join', 'help start']
     )
@@ -323,7 +294,7 @@ function handleHelp (user, msg) {
   }
 
   if (!sentMessage) {
-    user.sendMessage(
+    await user.sendMessage(
       'Quick guide:\n1️⃣ Someone creates a game with \'create\' and gets a game id.\n2️⃣ Other players join with \'join <game id>\' (e.g. \'join 1234\')\n3️⃣ The creator starts it with \'start <game id>\' (eg. \'start 1234\')\n\nFor more details run \'help list\' or \'help <command>\'',
       ['create', 'help list', 'help create']
     )
