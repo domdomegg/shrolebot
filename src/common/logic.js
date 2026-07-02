@@ -18,7 +18,7 @@ exports.handleMessage = (user, msg) => {
 }
 
 exports.handleNoMessage = (user) => {
-  user.sendMessage('Something went wrong getting the message to me. Please tell Adam if you see this error.')
+  return user.sendMessage('Something went wrong getting the message to me. Please tell Adam if you see this error.')
 }
 
 function handleDatabase (user, msg) {

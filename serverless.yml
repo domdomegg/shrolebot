@@ -2,7 +2,7 @@ service: secret-hitler-role-bot
 
 provider:
   name: aws
-  runtime: nodejs22.x
+  runtime: nodejs24.x
   stage: ${opt:stage, 'dev'}
   apiName: ${self:service}-api
   region: ${self:custom.env-default.REGION, self:custom.env-stage.REGION}
