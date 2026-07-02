@@ -1,10 +1,15 @@
-jest.mock('axios')
-const axios = require('axios')
-
+// vi.mock can't intercept the CJS require('axios') in src, so instead spy on
+// the request method of the axios instance. Must be require()'d, not
+// import'ed: axios ships separate CJS/ESM builds, and src holds the CJS one.
+const axios = require('axios').default
 const userGenerator = require('../../src/common/userGenerator')
 
+beforeEach(() => {
+  vi.spyOn(axios, 'request').mockResolvedValue()
+})
+
 afterEach(() => {
-  axios.mockReset()
+  vi.restoreAllMocks()
 })
 
 it('Uses local first name if provided in constructor', async () => {
@@ -15,23 +20,23 @@ it('Uses local first name if provided in constructor', async () => {
   const returnedFirstName = await user.getFirstNamePromise()
 
   // THEN
-  expect(axios).not.toHaveBeenCalled()
+  expect(axios.request).not.toHaveBeenCalled()
   expect(returnedFirstName).toBe('Adam')
 })
 
 it('Gets first name from Facebook API', async () => {
   // GIVEN
   const user = userGenerator({ networkName: 'FACEBOOK', networkScopedId: '12345678abcd', firstName: null })
-  axios.mockResolvedValue({ data: { first_name: 'Adam' } })
+  axios.request.mockResolvedValue({ data: { first_name: 'Adam' } })
   process.env.FB_PAGE_ACCESS_TOKEN = 'ABCD123'
-  expect(axios).not.toHaveBeenCalled()
+  expect(axios.request).not.toHaveBeenCalled()
 
   // WHEN
   const returnedFirstName = await user.getFirstNamePromise()
 
   // THEN
-  expect(axios).toHaveBeenCalledTimes(1)
-  expect(axios).toHaveBeenCalledWith({
+  expect(axios.request).toHaveBeenCalledTimes(1)
+  expect(axios.request).toHaveBeenCalledWith({
     method: 'GET',
     url: 'https://graph.facebook.com/12345678abcd?fields=first_name&access_token=ABCD123'
   })
@@ -41,38 +46,38 @@ it('Gets first name from Facebook API', async () => {
 it('Caches name locally after first call to Facebook API', async () => {
   // GIVEN
   const user = userGenerator({ networkName: 'FACEBOOK', networkScopedId: '12345678abcd', firstName: null })
-  axios.mockResolvedValue({ data: { first_name: 'Adam' } })
+  axios.request.mockResolvedValue({ data: { first_name: 'Adam' } })
   process.env.FB_PAGE_ACCESS_TOKEN = 'ABCD123'
-  expect(axios).not.toHaveBeenCalled()
+  expect(axios.request).not.toHaveBeenCalled()
 
   // WHEN
   const returnedFirstName1 = await user.getFirstNamePromise()
 
   // THEN
-  expect(axios).toHaveBeenCalledTimes(1)
+  expect(axios.request).toHaveBeenCalledTimes(1)
   expect(returnedFirstName1).toBe('Adam')
 
   // WHEN
   const returnedFirstName2 = await user.getFirstNamePromise()
 
   // THEN
-  expect(axios).toHaveBeenCalledTimes(1)
+  expect(axios.request).toHaveBeenCalledTimes(1)
   expect(returnedFirstName2).toBe('Adam')
 })
 
 it('Sends plain text messages to the Facebook API', async () => {
   // GIVEN
   const user = userGenerator({ networkName: 'FACEBOOK', networkScopedId: '12345678abcd', firstName: null })
-  axios.mockResolvedValue()
+  axios.request.mockResolvedValue()
   process.env.FB_PAGE_ACCESS_TOKEN = 'ABCD123'
-  expect(axios).not.toHaveBeenCalled()
+  expect(axios.request).not.toHaveBeenCalled()
 
   // WHEN
   await user.sendMessage('yeet')
 
   // THEN
-  expect(axios).toHaveBeenCalledTimes(1)
-  expect(axios).toHaveBeenCalledWith({
+  expect(axios.request).toHaveBeenCalledTimes(1)
+  expect(axios.request).toHaveBeenCalledWith({
     url: 'https://graph.facebook.com/v2.6/me/messages',
     params: { access_token: 'ABCD123' },
     method: 'POST',
@@ -86,16 +91,16 @@ it('Sends plain text messages to the Facebook API', async () => {
 it('Sends text messages with suggestions to the Facebook API', async () => {
   // GIVEN
   const user = userGenerator({ networkName: 'FACEBOOK', networkScopedId: '12345678abcd', firstName: null })
-  axios.mockResolvedValue()
+  axios.request.mockResolvedValue()
   process.env.FB_PAGE_ACCESS_TOKEN = 'ABCD123'
-  expect(axios).not.toHaveBeenCalled()
+  expect(axios.request).not.toHaveBeenCalled()
 
   // WHEN
   await user.sendMessage('Can I offer you an egg in this trying time?', ['Nah', 'Hell yeah!'])
 
   // THEN
-  expect(axios).toHaveBeenCalledTimes(1)
-  expect(axios).toHaveBeenCalledWith({
+  expect(axios.request).toHaveBeenCalledTimes(1)
+  expect(axios.request).toHaveBeenCalledWith({
     url: 'https://graph.facebook.com/v2.6/me/messages',
     params: { access_token: 'ABCD123' },
     method: 'POST',

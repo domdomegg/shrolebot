@@ -8,7 +8,7 @@ const mock = {}
 
 beforeAll(() => {
   mock.console = {
-    warn: jest.spyOn(console, 'warn').mockImplementation()
+    warn: vi.spyOn(console, 'warn').mockImplementation()
   }
   mock.user = utils.createMockUser('somebody')
 })
