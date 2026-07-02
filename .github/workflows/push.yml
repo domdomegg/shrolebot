@@ -4,7 +4,6 @@ on:
   push:
 
 permissions:
-  id-token: write # mint the GitHub OIDC token used to assume the AWS role
   contents: read
 
 jobs:
@@ -30,6 +29,14 @@ jobs:
     if: github.ref == 'refs/heads/master'
     needs: ci
     runs-on: ubuntu-latest
+    # Only the deploy job may mint OIDC tokens (the role trust is also pinned
+    # to this repo's master ref in aws-shared-infra)
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
     env:
       CI: true
       ENVYML: ${{ secrets.ENVYML }}
