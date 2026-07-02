@@ -1,4 +1,4 @@
-const Serverless = require('serverless')
+const Serverless = require('osls')
 const path = require('path')
 const fs = require('fs')
 const yaml = require('js-yaml')
