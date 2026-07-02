@@ -63,3 +63,5 @@ env.yml
 
 # Serverless directories
 .serverless
+# DynamoDB Local (downloaded by test/globalSetup.mjs)
+.dynamodb

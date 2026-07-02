@@ -1,9 +1,9 @@
 const AbstractUser = require('./AbstractUser')
 
 class MockUser extends AbstractUser {
-  constructor () {
-    super(...arguments)
-    this.sendMessage = jest.fn().mockResolvedValue()
+  // In tests, test/utils.js replaces sendMessage with a vi.fn() spy
+  sendMessage () {
+    return Promise.resolve()
   }
 
   getFirstNamePromise () {

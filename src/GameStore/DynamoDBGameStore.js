@@ -2,7 +2,7 @@
 
 const { DocumentClient } = require('aws-sdk/clients/dynamodb')
 const dynamoDB = new DocumentClient({
-  ...(process.env.JEST_WORKER_ID && {
+  ...(process.env.VITEST_WORKER_ID && {
     endpoint: 'localhost:8000',
     sslEnabled: false,
     region: 'local-env',

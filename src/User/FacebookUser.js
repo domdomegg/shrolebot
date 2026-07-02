@@ -6,7 +6,7 @@ const AbstractUser = require('./AbstractUser')
 class FacebookUser extends AbstractUser {
   async getFirstNamePromise () {
     if (this.firstName == null) {
-      const res = await axios({
+      const res = await axios.request({
         method: 'GET',
         url: `https://graph.facebook.com/${this.networkScopedId}?fields=first_name&access_token=${process.env.FB_PAGE_ACCESS_TOKEN}`
       })
@@ -28,7 +28,7 @@ class FacebookUser extends AbstractUser {
     }
 
     // Send the HTTP request to the Messenger Platform
-    return axios({
+    return axios.request({
       method: 'POST',
       url: 'https://graph.facebook.com/v2.6/me/messages',
       params: { access_token: process.env.FB_PAGE_ACCESS_TOKEN },
