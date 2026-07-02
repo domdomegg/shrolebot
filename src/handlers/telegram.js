@@ -31,7 +31,12 @@ exports.handler = async (event) => {
     await LogicHandler.handleNoMessage(user)
   } else {
     console.log("Recieved message '" + data.text + "' from chat with id " + data.chat.id)
-    await LogicHandler.handleMessage(user, data.text)
+    // Telegram clients send commands with a leading slash, but the bot's
+    // commands are bare words. '/start' is what the START button sends on
+    // first contact, so route it to the quick guide rather than the
+    // game-start command (which would demand a game id).
+    const text = data.text === '/start' ? 'help' : data.text.replace(/^\//, '')
+    await LogicHandler.handleMessage(user, text)
   }
 
   return { body: 'EVENT_RECEIVED', statusCode: 200 }

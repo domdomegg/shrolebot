@@ -103,3 +103,25 @@ it('handles invalid join command', async () => {
   expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
   expect(mock.user.sendMessage).toBeCalledWith('Game "invalid" not found 😕 - check the game id is correct (it should be a 4 digit number like "1234")')
 })
+
+it('does not resolve until sends have completed (no fire-and-forget)', async () => {
+  // GIVEN a send whose completion we control
+  let resolveSend
+  mock.user.sendMessage.mockImplementation(() => new Promise((resolve) => { resolveSend = resolve }))
+
+  // WHEN
+  let settled = false
+  const promise = logic.handleMessage(mock.user, 'help').then(() => { settled = true })
+
+  // THEN the handler must still be pending while the send is in flight.
+  // If it resolves early, the Lambda runtime would freeze the container
+  // with the reply un-sent (it only thaws on some later invocation).
+  await new Promise((resolve) => setTimeout(resolve, 25))
+  expect(mock.user.sendMessage).toHaveBeenCalledTimes(1)
+  expect(settled).toBe(false)
+
+  // ...and it resolves once the send completes
+  resolveSend()
+  await promise
+  expect(settled).toBe(true)
+})
