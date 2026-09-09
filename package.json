@@ -11,7 +11,7 @@
     "js-yaml": "^4.3.1",
     "osls": "^3.76.1",
     "standard": "^17.0.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "scripts": {
     "lint": "standard",
